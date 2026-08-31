@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "nyxai"
+version = "0.1.0"
+description = "NyxAI — Local-first AI companion and intelligent desktop agent for Linux"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "NyxAI Developer" }]
+keywords = ["ai", "assistant", "companion", "linux", "llm", "local-ai"]
+
+[project.urls]
+Repository = "https://github.com/nyyxus-preditor/NyxAI"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "core*", "tools*", "safety*", "voice*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["api/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
