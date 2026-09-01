@@ -76,6 +76,48 @@ class Settings(BaseSettings):
         description="Default response language. 'auto' matches the user's language.",
     )
 
+    # ─── Voice / STT (Phase 3) ────────────────────────────────────────────────
+    whisper_model: str = Field(
+        default="small",
+        description="Whisper model size: tiny, base, small, medium, large-v3. Default: small.",
+    )
+    whisper_device: str = Field(
+        default="cuda",
+        description="Device for Whisper inference: 'cuda' or 'cpu'. cuda uses RTX 4050.",
+    )
+    whisper_compute_type: str = Field(
+        default="float16",
+        description="Whisper compute type: float16 (CUDA), int8 (CPU). float16 on GPU is fastest.",
+    )
+    whisper_language: str = Field(
+        default="auto",
+        description="STT language hint: 'auto' for detection, or 'en', 'hi', 'mr' to force.",
+    )
+
+    # ─── Voice / TTS (Phase 3) ────────────────────────────────────────────────
+    tts_engine: str = Field(
+        default="kokoro",
+        description="TTS engine: 'kokoro' (English, high quality) or 'pyttsx3' (multilingual fallback).",
+    )
+    tts_voice: str = Field(
+        default="af_heart",
+        description="Kokoro voice name. See kokoro-onnx docs for available voices.",
+    )
+    tts_speed: float = Field(
+        default=1.0,
+        description="TTS speech speed multiplier. 1.0 = normal, 1.2 = slightly faster.",
+    )
+
+    # ─── Audio Recording (Phase 3) ────────────────────────────────────────────
+    audio_sample_rate: int = Field(
+        default=16000,
+        description="Microphone sample rate in Hz. Whisper expects 16000 Hz.",
+    )
+    audio_channels: int = Field(
+        default=1,
+        description="Microphone channels. 1 = mono (required by Whisper).",
+    )
+
     # ─── Validators ───────────────────────────────────────────────────────────
     @field_validator("log_level")
     @classmethod

@@ -15,7 +15,20 @@ python-dotenv>=1.0.0
 # ─── Structured Logging ───────────────────────────────────────────────────────
 structlog>=24.2.0
 
+# ─── System Metrics (Agent Tools — Phase 2) ───────────────────────────────────
+psutil>=6.0.0
+
+# ─── Voice Pipeline (Phase 3) ─────────────────────────────────────────────────
+faster-whisper>=1.1.0   # STT: CTranslate2 Whisper (CUDA-accelerated)
+sounddevice>=0.5.0      # Mic input + speaker output (PulseAudio/PipeWire)
+soundfile>=0.12.0       # WAV/audio file read/write
+numpy>=1.26.0           # Audio array processing
+kokoro-onnx>=0.4.0      # TTS: English, high quality, MIT licensed, ONNX CPU
+pyttsx3>=2.90           # TTS fallback: Hindi/Marathi via eSpeak-NG (offline)
+websockets>=13.0        # WebSocket support for /voice endpoint
+
 # ─── Testing ──────────────────────────────────────────────────────────────────
 pytest>=8.2.0
 pytest-asyncio>=0.23.0
 anyio>=4.4.0
+httpx>=0.27.0

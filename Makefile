@@ -1,4 +1,4 @@
-.PHONY: help setup install dev test lint clean pull-model
+.PHONY: help setup install dev test test-all test-cov lint clean pull-model voice
 
 PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
@@ -10,7 +10,9 @@ help:
 	@echo "────────────────────────────────────────"
 	@echo "  make install      Install Python dependencies"
 	@echo "  make dev          Start FastAPI dev server (auto-reload)"
-	@echo "  make test         Run test suite"
+	@echo "  make voice        Start push-to-talk voice chat CLI (agent mode)"
+	@echo "  make test         Run full test suite (all phases)"
+	@echo "  make test-cov     Run tests with coverage report"
 	@echo "  make pull-model   Pull the default Ollama model"
 	@echo "  make lint         Run ruff linter"
 	@echo "  make clean        Remove __pycache__ and .pyc files"
@@ -31,13 +33,29 @@ install:
 dev:
 	.venv/bin/uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
 
-# ─── Run tests ─────────────────────────────────────────────────────────────────
+# ─── Run tests (all phases) ───────────────────────────────────────────────────
 test:
-	.venv/bin/pytest api/tests/ -v --tb=short
+	.venv/bin/pytest api/tests/ tests/ -v --tb=short
+
+test-all: test
 
 # ─── Run tests with coverage ───────────────────────────────────────────────────
 test-cov:
-	.venv/bin/pytest api/tests/ -v --tb=short --cov=api --cov=core --cov-report=term-missing
+	.venv/bin/pytest api/tests/ tests/ -v --tb=short --cov=api --cov=core --cov=voice --cov=tools --cov=safety --cov-report=term-missing
+
+# ─── Push-to-talk voice chat CLI ──────────────────────────────────────────────
+voice:
+	$(PYTHON) scripts/voice_chat.py --mode agent
+
+# ─── Voice CLI (companion mode) ───────────────────────────────────────────────
+voice-companion:
+	$(PYTHON) scripts/voice_chat.py --mode companion
+
+# ─── Companion Web UI (Phase 4) ────────────────────────────────────────────────
+ui:
+	cd apps/companion && npm install && npm run dev
+
+companion-ui: ui
 
 # ─── Pull recommended Ollama model ────────────────────────────────────────────
 pull-model:

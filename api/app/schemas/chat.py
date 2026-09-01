@@ -3,11 +3,11 @@ api/app/schemas/chat.py
 
 Pydantic schemas for the /chat endpoint.
 
-These define the API contract for text-based conversation.
-The schemas are intentionally kept simple for Phase 1 and will be
-extended in Phase 5 (memory) and Phase 6 (agent mode).
+Phase 1: Basic message + conversation_id
+Phase 2: Added 'mode' field (companion/agent) and tool metadata in response
 """
 
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -26,16 +26,49 @@ class ChatRequest(BaseModel):
         description=(
             "Optional conversation UUID for multi-turn context. "
             "If None, a new conversation is started. "
-            "In Phase 1, conversation history is in-memory only."
         ),
+    )
+    mode: Literal["companion", "agent"] = Field(
+        default="companion",
+        description=(
+            "Operating mode. "
+            "'companion' — pure conversational AI, no tools. "
+            "'agent' — tool-enabled mode; NyxAI can take real actions."
+        ),
+    )
+    tts: bool = Field(
+        default=True,
+        description="Whether to generate TTS audio in response. Default: True.",
     )
 
     model_config = {
         "json_schema_extra": {
-            "example": {
-                "message": "Hello NyxAI! आज काय plan आहे?",
-                "conversation_id": None,
-            }
+            "examples": [
+                {
+                    "summary": "Companion mode (default)",
+                    "value": {
+                        "message": "Hello NyxAI! आज काय plan आहे?",
+                        "conversation_id": None,
+                        "mode": "companion",
+                    },
+                },
+                {
+                    "summary": "Agent mode — battery check",
+                    "value": {
+                        "message": "What's my battery level?",
+                        "conversation_id": None,
+                        "mode": "agent",
+                    },
+                },
+                {
+                    "summary": "Agent mode — open app",
+                    "value": {
+                        "message": "VS Code उघड.",
+                        "conversation_id": None,
+                        "mode": "agent",
+                    },
+                },
+            ]
         }
     }
 
@@ -51,13 +84,57 @@ class ChatResponse(BaseModel):
         )
     )
     model: str = Field(description="The LLM model that generated this response.")
+    mode: Literal["companion", "agent"] = Field(
+        description="The mode that was used to generate this response."
+    )
+    tool_used: str | None = Field(
+        default=None,
+        description=(
+            "Name of the tool that was called, if any. "
+            "Only set when mode='agent' and a tool was invoked."
+        ),
+    )
+    tool_result: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Raw output data from the tool, if one was called. "
+            "Structure varies by tool."
+        ),
+    )
+    audio: str | None = Field(
+        default=None,
+        description="Base64-encoded WAV audio of NyxAI's speech response.",
+    )
 
     model_config = {
         "json_schema_extra": {
-            "example": {
-                "response": "अरे, मी NyxAI! आज सगळं ठीक आहे. तुझ्याशी बोलायला मजा येते! 😊",
-                "conversation_id": "550e8400-e29b-41d4-a716-446655440000",
-                "model": "qwen2.5:3b",
-            }
+            "examples": [
+                {
+                    "summary": "Companion response",
+                    "value": {
+                        "response": "अरे, मी NyxAI! आज सगळं ठीक आहे. 😊",
+                        "conversation_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "model": "qwen2.5:3b",
+                        "mode": "companion",
+                        "tool_used": None,
+                        "tool_result": None,
+                    },
+                },
+                {
+                    "summary": "Agent response with battery tool",
+                    "value": {
+                        "response": "Your battery is at 78% and charging! ⚡",
+                        "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+                        "model": "qwen2.5:3b",
+                        "mode": "agent",
+                        "tool_used": "get_battery_status",
+                        "tool_result": {
+                            "percent": 78.0,
+                            "plugged_in": True,
+                            "status": "Charging",
+                        },
+                    },
+                },
+            ]
         }
     }

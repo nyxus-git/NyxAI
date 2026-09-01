@@ -5,8 +5,11 @@ Chat endpoint router for NyxAI.
 
 POST /chat
 
-Accepts a user message, routes it through the ChatService to the
-configured LLM provider, and returns NyxAI's response.
+Accepts a user message, routes it through the ChatService to either:
+  - Companion mode: Direct LLM conversation (mode="companion", default)
+  - Agent mode: Tool-calling agentic loop (mode="agent")
+
+Returns NyxAI's response with optional tool metadata.
 
 The router delegates all business logic to ChatService — keeping the
 router thin and focused only on HTTP concerns (request parsing,
@@ -18,6 +21,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Request, status
 
 from api.app.schemas.chat import ChatRequest, ChatResponse
+from core.agent.schemas import AgentMode
 from core.brain.llm import LLMConnectionError, LLMModelError, LLMTimeoutError
 from core.logging import get_logger
 
@@ -33,7 +37,8 @@ router = APIRouter(tags=["Chat"])
     description=(
         "Send a text message to NyxAI and receive a response. "
         "Supports English, Hindi, Marathi, and Hinglish. "
-        "Provide a conversation_id to continue an existing conversation."
+        "Use mode='companion' (default) for conversation, "
+        "or mode='agent' to enable tool-calling (battery, apps, web search, etc)."
     ),
     responses={
         200: {"description": "NyxAI responded successfully."},
@@ -48,10 +53,10 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
 
     Args:
         request: FastAPI Request object (used to access app.state).
-        body: Validated ChatRequest with message and optional conversation_id.
+        body: Validated ChatRequest with message, optional conversation_id, and mode.
 
     Returns:
-        ChatResponse with NyxAI's reply and conversation metadata.
+        ChatResponse with NyxAI's reply, conversation metadata, and optional tool info.
 
     Raises:
         503: If Ollama is not running or the model is unavailable.
@@ -67,12 +72,17 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         conversation_id=str(body.conversation_id) if body.conversation_id else "new",
         message_preview=message_preview,
         message_length=len(body.message),
+        mode=body.mode,
     )
 
+    # Convert string mode to AgentMode enum
+    agent_mode = AgentMode(body.mode)
+
     try:
-        response_text, conversation_id = await chat_service.chat(
+        response_text, conversation_id, tool_used, tool_result = await chat_service.chat(
             message=body.message,
             conversation_id=body.conversation_id,
+            mode=agent_mode,
         )
 
     except LLMConnectionError as e:
@@ -117,8 +127,29 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             },
         ) from e
 
+    audio_b64 = None
+    if body.tts:
+        tts_speaker = getattr(request.app.state, "tts_speaker", None)
+        if tts_speaker:
+            try:
+                import asyncio
+                import base64
+                loop = asyncio.get_event_loop()
+                audio_bytes = await loop.run_in_executor(
+                    None,
+                    lambda: tts_speaker.synthesize(response_text),
+                )
+                if audio_bytes:
+                    audio_b64 = base64.b64encode(audio_bytes).decode()
+            except Exception as e:
+                logger.warning("chat_tts_synthesis_failed", error=str(e))
+
     return ChatResponse(
         response=response_text,
         conversation_id=conversation_id,
         model=request.app.state.llm_provider.get_model_name(),
+        mode=body.mode,
+        tool_used=tool_used,
+        tool_result=tool_result,
+        audio=audio_b64,
     )

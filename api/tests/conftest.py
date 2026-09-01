@@ -91,6 +91,24 @@ class MockLLMProvider(LLMProvider):
     def get_model_name(self) -> str:
         return self.model
 
+    async def chat_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[dict],
+        temperature: float = 0.5,
+    ):
+        """Mock chat_with_tools — returns a text response with no tool calls."""
+        from core.brain.llm import LLMResponseWithTools
+        self.chat_call_count += 1
+        self.last_messages = messages
+        return LLMResponseWithTools(
+            content=self.response_text,
+            model=self.model,
+            tool_calls=[],
+            prompt_tokens=10,
+            completion_tokens=20,
+        )
+
 
 # ─── Test App Factory ─────────────────────────────────────────────────────────
 
@@ -110,7 +128,9 @@ def make_test_app(mock_provider: MockLLMProvider) -> FastAPI:
         """Inject mock services into app.state — no real Ollama calls."""
         app.state.settings = get_settings()
         app.state.llm_provider = mock_provider
-        app.state.chat_service = ChatService(llm_provider=mock_provider)
+        app.state.chat_service = ChatService(llm_provider=mock_provider, agent=None)
+        app.state.agent = None
+        app.state.tool_registry = None
         yield
         # No cleanup needed for mock
 

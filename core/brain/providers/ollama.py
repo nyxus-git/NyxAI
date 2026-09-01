@@ -11,6 +11,7 @@ Architecture notes:
   - Uses httpx.AsyncClient for non-blocking HTTP calls.
   - Implements streaming via Ollama's NDJSON streaming endpoint.
   - Provides health checks to verify both Ollama and the model are ready.
+  - Phase 2: Implements chat_with_tools() using Ollama's native tool calling.
 """
 
 import json
@@ -18,11 +19,13 @@ from typing import AsyncIterator
 
 import httpx
 
+from core.agent.schemas import ToolCall
 from core.brain.llm import (
     LLMConnectionError,
     LLMModelError,
     LLMProvider,
     LLMResponse,
+    LLMResponseWithTools,
     LLMTimeoutError,
     Message,
 )
@@ -261,7 +264,150 @@ class OllamaProvider(LLMProvider):
         except httpx.TimeoutException as e:
             raise LLMTimeoutError("Ollama streaming request timed out.") from e
 
+    async def chat_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[dict],
+        temperature: float = 0.5,
+    ) -> LLMResponseWithTools:
+        """
+        Send a conversation to Ollama with available tools for native tool calling.
+
+        Uses Ollama's /api/chat endpoint with the 'tools' parameter.
+        The model will either:
+          - Return a text response (message.tool_calls is absent/empty)
+          - Return a tool call decision (message.tool_calls contains one or more calls)
+
+        Ollama tool call response shape:
+        {
+            "message": {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "get_battery_status",
+                            "arguments": {}
+                        }
+                    }
+                ]
+            },
+            "done": true
+        }
+
+        Args:
+            messages: Ordered conversation messages.
+            tools: Tool definitions in Ollama-compatible JSON format.
+            temperature: Lower temperature (default 0.5) for more deterministic
+                         tool selection vs. general conversation.
+
+        Returns:
+            LLMResponseWithTools with tool_calls populated if the LLM chose a tool,
+            or content populated if it chose to respond directly.
+
+        Raises:
+            LLMConnectionError: If Ollama is not reachable.
+            LLMModelError: If the model is not available.
+            LLMTimeoutError: If the request times out.
+        """
+        payload: dict = {
+            "model": self._model,
+            "messages": [msg.to_dict() for msg in messages],
+            "tools": tools,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+            },
+        }
+
+        logger.debug(
+            "ollama_chat_with_tools_request",
+            model=self._model,
+            message_count=len(messages),
+            tool_count=len(tools),
+        )
+
+        try:
+            client = self._get_client()
+            response = await client.post("/api/chat", json=payload)
+            response.raise_for_status()
+
+        except httpx.ConnectError as e:
+            logger.error("ollama_tool_connection_failed", error=str(e))
+            raise LLMConnectionError(
+                f"Cannot connect to Ollama at {self._base_url}. "
+                f"Is Ollama running? Start it with: ollama serve"
+            ) from e
+
+        except httpx.TimeoutException as e:
+            logger.error("ollama_tool_request_timeout", model=self._model)
+            raise LLMTimeoutError(
+                f"Ollama tool request timed out after {self._timeout}s."
+            ) from e
+
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            body = e.response.text
+            if status == 404:
+                logger.error("ollama_model_not_found", model=self._model)
+                raise LLMModelError(
+                    f"Model '{self._model}' not found. Pull it: ollama pull {self._model}"
+                ) from e
+            logger.error("ollama_tool_http_error", status=status, body=body[:200])
+            raise LLMConnectionError(f"Ollama returned HTTP {status}: {body[:200]}") from e
+
+        data = response.json()
+        message = data.get("message", {})
+        content = message.get("content", "") or ""
+        raw_tool_calls = message.get("tool_calls", []) or []
+
+        # Parse Ollama's tool_calls format into our typed ToolCall objects
+        tool_calls: list[ToolCall] = []
+        for i, tc in enumerate(raw_tool_calls):
+            func = tc.get("function", {})
+            tool_name = func.get("name", "")
+            arguments = func.get("arguments", {})
+
+            if not tool_name:
+                logger.warning("ollama_tool_call_missing_name", index=i)
+                continue
+
+            # Ollama may return arguments as a JSON string or a dict
+            if isinstance(arguments, str):
+                try:
+                    arguments = __import__("json").loads(arguments)
+                except Exception:
+                    arguments = {}
+
+            tool_calls.append(
+                ToolCall(
+                    name=tool_name,
+                    arguments=arguments if isinstance(arguments, dict) else {},
+                    call_id=tc.get("id"),
+                )
+            )
+
+        prompt_tokens = data.get("prompt_eval_count", 0)
+        completion_tokens = data.get("eval_count", 0)
+
+        logger.info(
+            "ollama_tool_chat_complete",
+            model=self._model,
+            has_tool_calls=bool(tool_calls),
+            tool_names=[tc.name for tc in tool_calls],
+            prompt_tokens=prompt_tokens,
+        )
+
+        return LLMResponseWithTools(
+            content=content,
+            model=self._model,
+            tool_calls=tool_calls,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+
     async def health_check(self) -> bool:
+
         """
         Check if Ollama is running and the configured model is available.
 

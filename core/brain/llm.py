@@ -9,12 +9,21 @@ on a specific LLM implementation — only on this contract.
 
 Swapping the LLM provider requires zero changes to the API layer,
 agent layer, or any other consumer of this interface.
+
+Phase 2 additions:
+  - LLMResponseWithTools: Carries both text content and tool call decisions
+  - chat_with_tools(): Abstract method for LLM-native tool calling
 """
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import AsyncIterator
+from typing import TYPE_CHECKING, Any, AsyncIterator
+
+if TYPE_CHECKING:
+    from core.agent.schemas import ToolCall
 
 
 class MessageRole(str, Enum):
@@ -62,6 +71,37 @@ class LLMResponse:
     completion_tokens: int = 0
     total_tokens: int = 0
     extra: dict = field(default_factory=dict)
+
+
+@dataclass
+class LLMResponseWithTools:
+    """
+    Response from an LLM provider when tools are available.
+
+    When Ollama (or any provider) responds to a chat_with_tools() call,
+    it either:
+      a) Returns a text response directly (tool_calls is empty)
+      b) Returns a tool call decision (content may be empty, tool_calls has items)
+
+    Attributes:
+        content: Text content of the response (may be empty if tool_calls is set).
+        model: The model name that generated the response.
+        tool_calls: List of ToolCall objects the LLM decided to execute.
+                    Empty list if the LLM chose to respond directly.
+        prompt_tokens: Tokens in the input.
+        completion_tokens: Tokens in the output.
+    """
+
+    content: str
+    model: str
+    tool_calls: list[ToolCall] = field(default_factory=list)
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+    @property
+    def has_tool_calls(self) -> bool:
+        """Return True if the LLM decided to call one or more tools."""
+        return len(self.tool_calls) > 0
 
 
 class LLMProvider(ABC):
@@ -147,6 +187,38 @@ class LLMProvider(ABC):
 
         Yields:
             String chunks as they are generated.
+        """
+        ...
+
+    @abstractmethod
+    async def chat_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[dict],
+        temperature: float = 0.7,
+    ) -> LLMResponseWithTools:
+        """
+        Send a conversation to the LLM with a list of available tools.
+
+        The LLM will either:
+          - Return a text response (LLMResponseWithTools.tool_calls is empty)
+          - Return a tool call decision (LLMResponseWithTools.tool_calls is non-empty)
+
+        This is the primary method for agentic interactions. The tools list
+        should be in Ollama-compatible format (from ToolDefinition.to_ollama_format()).
+
+        Args:
+            messages: Ordered conversation messages (system, user, assistant turns).
+            tools: List of tool definitions in Ollama JSON format.
+            temperature: Sampling temperature (lower = more deterministic tool selection).
+
+        Returns:
+            LLMResponseWithTools with either content or tool_calls populated.
+
+        Raises:
+            LLMConnectionError: If the provider cannot be reached.
+            LLMModelError: If the requested model is not available.
+            LLMTimeoutError: If the request exceeds the timeout.
         """
         ...
 

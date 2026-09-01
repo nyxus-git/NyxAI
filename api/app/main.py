@@ -29,9 +29,14 @@ from fastapi.responses import RedirectResponse
 
 from api.app.config import get_settings
 from api.app.routers import chat, health
+from api.app.routers import voice as voice_router
 from api.app.services.chat_service import ChatService
+from core.agent.agent import NyxAgent
+from core.agent.tool_registry import build_default_registry
 from core.brain.providers.ollama import OllamaProvider
 from core.logging import configure_logging, get_logger
+from voice.stt.transcriber import WhisperTranscriber
+from voice.tts.speaker import NyxTTSSpeaker
 
 
 @asynccontextmanager
@@ -43,8 +48,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
       1. Load settings from environment / .env
       2. Configure structured logging
       3. Initialize OllamaProvider (configures HTTP client)
-      4. Initialize ChatService with the provider
-      5. Store both on app.state for dependency access in routers
+      4. Initialize NyxAgent + ToolRegistry (Phase 2)
+      5. Initialize WhisperTranscriber + NyxTTSSpeaker (Phase 3)
+      6. Initialize ChatService
+      7. Store all on app.state for dependency access in routers
 
     Shutdown:
       1. Close the Ollama HTTP client gracefully
@@ -88,13 +95,44 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             hint=f"Run: ollama pull {settings.ollama_model}",
         )
 
-    # Step 4: Initialize ChatService
-    chat_service = ChatService(llm_provider=llm_provider)
+    # Step 4: Build tool registry + NyxAgent (Phase 2)
+    logger.info("agent_init", message="Building tool registry and NyxAgent...")
+    tool_registry = build_default_registry()
+    agent = NyxAgent(
+        llm_provider=llm_provider,
+        tool_registry=tool_registry,
+    )
 
-    # Step 5: Store on app.state (accessible in all route handlers via request.app.state)
+    # Step 5: Initialize Voice pipeline (Phase 3)
+    logger.info(
+        "voice_init",
+        whisper_model=settings.whisper_model,
+        whisper_device=settings.whisper_device,
+        tts_engine=settings.tts_engine,
+        tts_voice=settings.tts_voice,
+    )
+    transcriber = WhisperTranscriber(
+        model=settings.whisper_model,
+        device=settings.whisper_device,
+        compute_type=settings.whisper_compute_type,
+        language=settings.whisper_language,
+    )
+    tts_speaker = NyxTTSSpeaker(
+        kokoro_voice=settings.tts_voice,
+        tts_speed=settings.tts_speed,
+    )
+
+    # Step 6: Initialize ChatService (with agent)
+    chat_service = ChatService(llm_provider=llm_provider, agent=agent)
+
+    # Step 7: Store on app.state (accessible in all route handlers via request.app.state)
     app.state.settings = settings
     app.state.llm_provider = llm_provider
     app.state.chat_service = chat_service
+    app.state.agent = agent
+    app.state.tool_registry = tool_registry
+    app.state.transcriber = transcriber
+    app.state.tts_speaker = tts_speaker
 
     logger.info("nyxai_ready", message="NyxAI backend is ready to receive requests.")
 
@@ -141,6 +179,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(health.router)
     app.include_router(chat.router)
+    app.include_router(voice_router.router)
 
     # ── Root redirect ─────────────────────────────────────────────────────────
     @app.get("/", include_in_schema=False)
