@@ -27,6 +27,10 @@ kokoro-onnx>=0.4.0      # TTS: English, high quality, MIT licensed, ONNX CPU
 pyttsx3>=2.90           # TTS fallback: Hindi/Marathi via eSpeak-NG (offline)
 websockets>=13.0        # WebSocket support for /voice endpoint
 
+# ─── Memory / Persistence (Phase 5) ──────────────────────────────────────────
+aiosqlite>=0.20.0        # Async SQLite driver for conversation + memory persistence
+chromadb>=0.5.0          # Local vector store for semantic memory retrieval
+
 # ─── Testing ──────────────────────────────────────────────────────────────────
 pytest>=8.2.0
 pytest-asyncio>=0.23.0

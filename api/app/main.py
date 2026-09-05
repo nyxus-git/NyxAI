@@ -13,6 +13,16 @@ How it works:
     state is stored on `app.state` for injection into route handlers.
   - On shutdown: the HTTP client is cleanly closed.
 
+Startup order (Phase 5):
+  1. Load settings + configure logging
+  2. Initialize MemoryDatabase (create SQLite schema if needed)
+  3. Initialize MemoryService (all memory layers)
+  4. Initialize OllamaProvider (LLM)
+  5. Initialize NyxAgent + ToolRegistry
+  6. Initialize Voice pipeline (STT + TTS)
+  7. Initialize ChatService (with memory + agent)
+  8. Store all on app.state
+
 Running:
     uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
 
@@ -21,7 +31,7 @@ Or via Makefile:
 """
 
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,29 +39,33 @@ from fastapi.responses import RedirectResponse
 
 from api.app.config import get_settings
 from api.app.routers import chat, health
+from api.app.routers import memory as memory_router
 from api.app.routers import voice as voice_router
 from api.app.services.chat_service import ChatService
 from core.agent.agent import NyxAgent
 from core.agent.tool_registry import build_default_registry
 from core.brain.providers.ollama import OllamaProvider
 from core.logging import configure_logging, get_logger
+from core.memory import MemoryService
+from core.memory.database import MemoryDatabase
 from voice.stt.transcriber import WhisperTranscriber
 from voice.tts.speaker import NyxTTSSpeaker
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Manage application startup and shutdown lifecycle.
 
     Startup:
       1. Load settings from environment / .env
       2. Configure structured logging
-      3. Initialize OllamaProvider (configures HTTP client)
-      4. Initialize NyxAgent + ToolRegistry (Phase 2)
-      5. Initialize WhisperTranscriber + NyxTTSSpeaker (Phase 3)
-      6. Initialize ChatService
-      7. Store all on app.state for dependency access in routers
+      3. Initialize MemoryDatabase + MemoryService (Phase 5)
+      4. Initialize OllamaProvider (LLM)
+      5. Initialize NyxAgent + ToolRegistry (Phase 2)
+      6. Initialize WhisperTranscriber + NyxTTSSpeaker (Phase 3)
+      7. Initialize ChatService (memory-aware, Phase 5)
+      8. Store all on app.state for dependency access in routers
 
     Shutdown:
       1. Close the Ollama HTTP client gracefully
@@ -70,7 +84,31 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         port=settings.port,
     )
 
-    # Step 2: Initialize LLM provider
+    # Step 2: Initialize Memory System (Phase 5)
+    logger.info(
+        "memory_init",
+        db_path=settings.memory_db_path,
+        semantic_enabled=settings.semantic_memory_enabled,
+        long_term_enabled=settings.long_term_memory_enabled,
+        episodic_enabled=settings.episodic_memory_enabled,
+    )
+    memory_db = MemoryDatabase(db_path=settings.memory_db_path)
+    await memory_db.initialize()
+
+    memory_service = MemoryService(
+        db=memory_db,
+        semantic_memory_enabled=settings.semantic_memory_enabled,
+        ollama_base_url=settings.ollama_base_url,
+        embedding_model=settings.embedding_model,
+        chroma_path=settings.chroma_db_path,
+        top_k=settings.memory_retrieval_top_k,
+        max_history_turns=settings.max_history_turns,
+        long_term_enabled=settings.long_term_memory_enabled,
+        episodic_enabled=settings.episodic_memory_enabled,
+    )
+    await memory_service.initialize()
+
+    # Step 3: Initialize LLM provider
     logger.info(
         "llm_provider_init",
         provider="OllamaProvider",
@@ -84,7 +122,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         timeout=settings.ollama_timeout,
     )
 
-    # Step 3: Perform initial health check (non-blocking — we warn but don't crash)
+    # Step 4: Perform initial health check (non-blocking — warn but don't crash)
     is_healthy = await llm_provider.health_check()
     if is_healthy:
         logger.info("ollama_ready", model=settings.ollama_model)
@@ -95,7 +133,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             hint=f"Run: ollama pull {settings.ollama_model}",
         )
 
-    # Step 4: Build tool registry + NyxAgent (Phase 2)
+    # Step 5: Build tool registry + NyxAgent (Phase 2)
     logger.info("agent_init", message="Building tool registry and NyxAgent...")
     tool_registry = build_default_registry()
     agent = NyxAgent(
@@ -103,7 +141,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         tool_registry=tool_registry,
     )
 
-    # Step 5: Initialize Voice pipeline (Phase 3)
+    # Step 6: Initialize Voice pipeline (Phase 3)
     logger.info(
         "voice_init",
         whisper_model=settings.whisper_model,
@@ -122,12 +160,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         tts_speed=settings.tts_speed,
     )
 
-    # Step 6: Initialize ChatService (with agent)
-    chat_service = ChatService(llm_provider=llm_provider, agent=agent)
+    # Step 7: Initialize ChatService (now memory-aware)
+    chat_service = ChatService(
+        llm_provider=llm_provider,
+        memory_service=memory_service,
+        agent=agent,
+    )
 
-    # Step 7: Store on app.state (accessible in all route handlers via request.app.state)
+    # Step 8: Store on app.state (accessible in all route handlers)
     app.state.settings = settings
     app.state.llm_provider = llm_provider
+    app.state.memory_db = memory_db
+    app.state.memory_service = memory_service
     app.state.chat_service = chat_service
     app.state.agent = agent
     app.state.tool_registry = tool_registry
@@ -180,6 +224,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(chat.router)
     app.include_router(voice_router.router)
+    app.include_router(memory_router.router)  # Phase 5: Memory API
 
     # ── Root redirect ─────────────────────────────────────────────────────────
     @app.get("/", include_in_schema=False)

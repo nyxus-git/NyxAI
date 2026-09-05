@@ -118,6 +118,46 @@ class Settings(BaseSettings):
         description="Microphone channels. 1 = mono (required by Whisper).",
     )
 
+    # ─── Memory / Persistence (Phase 5) ──────────────────────────────────────────
+    memory_db_path: str = Field(
+        default="./data/nyx_memory.db",
+        description="Path to the SQLite database file for conversation + memory storage.",
+    )
+    chroma_db_path: str = Field(
+        default="./data/chroma",
+        description="Directory path for ChromaDB persistent vector store.",
+    )
+    embedding_model: str = Field(
+        default="nomic-embed-text",
+        description=(
+            "Ollama model to use for generating embeddings. "
+            "Must be pulled with: ollama pull nomic-embed-text"
+        ),
+    )
+    memory_retrieval_top_k: int = Field(
+        default=5,
+        description="Number of top semantic memory results to inject into LLM context.",
+    )
+    max_history_turns: int = Field(
+        default=20,
+        description="Maximum number of conversation turns to retain in short-term memory.",
+    )
+    long_term_memory_enabled: bool = Field(
+        default=True,
+        description="Whether to inject long-term user memories into the system prompt.",
+    )
+    episodic_memory_enabled: bool = Field(
+        default=True,
+        description="Whether to record tool executions and events as episodic memories.",
+    )
+    semantic_memory_enabled: bool = Field(
+        default=False,
+        description=(
+            "Whether to use ChromaDB vector search for memory retrieval. "
+            "Requires: ollama pull nomic-embed-text. Off by default until confirmed."
+        ),
+    )
+
     # ─── Validators ───────────────────────────────────────────────────────────
     @field_validator("log_level")
     @classmethod
