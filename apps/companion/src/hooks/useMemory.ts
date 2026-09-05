@@ -47,12 +47,21 @@ export function useMemory({
       const url = tag
         ? `${apiBaseUrl}/memory/long-term?tag=${encodeURIComponent(tag)}`
         : `${apiBaseUrl}/memory/long-term`;
-      const res = await fetch(url);
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setMemories(data.memories);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load memories');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Is the backend running?');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load memories');
+      }
     } finally {
       setLoading(false);
     }

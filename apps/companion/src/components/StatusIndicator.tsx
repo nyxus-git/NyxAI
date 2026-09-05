@@ -30,12 +30,13 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isConnected) return;
-
     const fetchStatus = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${apiBaseUrl}/memory/status`);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(`${apiBaseUrl}/memory/status`, { signal: controller.signal });
+        clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
           setMemStatus(data);
@@ -48,9 +49,9 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30_000); // Refresh every 30s
+    const interval = setInterval(fetchStatus, 30_000);
     return () => clearInterval(interval);
-  }, [isConnected, apiBaseUrl]);
+  }, [apiBaseUrl]);
 
   return (
     <div className="status-indicator">

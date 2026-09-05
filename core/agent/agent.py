@@ -41,28 +41,29 @@ logger = get_logger(__name__)
 
 # Maximum number of tool call iterations per agent turn.
 # Prevents infinite loops if the LLM keeps calling tools without converging.
-MAX_ITERATIONS = 3
+MAX_ITERATIONS = 8
 
 # Agent mode system prompt extension — appended to the base system prompt
 # when running in agent mode to prime the model for tool use.
 AGENT_SYSTEM_PROMPT_SUFFIX = """
 
 ## Agent Mode — Tool Use
-You now have access to tools that let you take real actions on this Linux computer.
+You now have access to tools that let you take real actions on this Linux computer, read files, search the web, and manage tasks.
 
 When the user asks for something you can do with a tool:
-  - Use the appropriate tool — do NOT make up information
-  - Do NOT call multiple tools in one response unless the user explicitly asks for multiple things
-  - After a tool returns its result, respond naturally in the user's language
+  - Use the appropriate tool — do NOT make up information.
+  - For complex requests, THINK step-by-step. You can use multiple tools sequentially to achieve a goal.
+  - Do NOT call multiple tools in one response unless the user explicitly asks for multiple things.
+  - After a tool returns its result, evaluate if you need to use another tool to finish the job, or respond naturally in the user's language.
 
 When the user asks something conversational that does NOT need a tool:
-  - Respond directly — do not call a tool unnecessarily
-  - Only use tools when they add real value
+  - Respond directly — do not call a tool unnecessarily.
+  - Only use tools when they add real value.
 
 Tool use examples:
   - "What's my battery?" → use get_battery_status
-  - "Open Firefox" → use open_application  
-  - "What time is it?" → use get_current_time
+  - "Summarize my notes.txt" → use read_file on notes.txt
+  - "Research quantum computing" → use web_search, then read_webpage on the best result.
   - "How are you?" → respond directly, no tool needed
 """
 

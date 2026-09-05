@@ -27,6 +27,7 @@ from __future__ import annotations
 import io
 import threading
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
@@ -279,17 +280,8 @@ class Pyttsx3Speaker(TTSProvider):
         logger.info("pyttsx3_tts_configured", speed=speed)
 
     def _get_engine(self) -> Any:
-        """Get pyttsx3 engine (thread-safe lazy init)."""
-        if self._engine is None:
-            with self._lock:
-                if self._engine is None:
-                    import pyttsx3
-                    self._engine = pyttsx3.init()
-                    self._engine.setProperty("rate", self._speed)
-                    if self._voice_id:
-                        self._engine.setProperty("voice", self._voice_id)
-                    logger.info("pyttsx3_engine_initialized")
-        return self._engine
+        """Deprecated: We no longer hold an engine in-process."""
+        return None
 
     def _get_lang_code(self, language: str) -> str:
         """Map language code to eSpeak voice identifier."""
@@ -316,48 +308,49 @@ class Pyttsx3Speaker(TTSProvider):
         if not text.strip():
             return b""
 
+        import subprocess
+        import sys
+        import base64
         import tempfile
         import os
 
-        engine = self._get_engine()
+        # Base64 encode the text to safely pass it to the python subprocess
+        encoded_text = base64.b64encode(text.encode("utf-8")).decode("utf-8")
 
-        # Set language-appropriate voice
-        lang_code = self._get_lang_code(language)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            tmp_path = f.name
+
+        # We pass voice_id if available, otherwise fallback to the language mapping code
+        target_voice = self._voice_id or self._get_lang_code(language)
+
+        script = f"""
+import pyttsx3
+import base64
+text = base64.b64decode('{encoded_text}').decode('utf-8')
+engine = pyttsx3.init()
+engine.setProperty('rate', {self._speed})
+
+# Find and set voice safely in the subprocess
+target_voice = '{target_voice}'.lower()
+for voice in engine.getProperty('voices'):
+    if target_voice in str(getattr(voice, 'id', '')).lower() or target_voice in str(getattr(voice, 'name', '')).lower():
+        engine.setProperty('voice', voice.id)
+        break
+
+engine.save_to_file(text, '{tmp_path}')
+engine.runAndWait()
+"""
         try:
-            voices = engine.getProperty("voices")
-            if isinstance(voices, (list, tuple)):
-                for voice in voices:
-                    voice_id = getattr(voice, "id", "")
-                    voice_name = getattr(voice, "name", "")
-                    if lang_code in str(voice_id).lower() or lang_code in str(voice_name).lower():
-                        engine.setProperty("voice", voice_id)
-                        break
-        except Exception:
-            pass  # Keep default voice if language switching fails
-
-        logger.debug("pyttsx3_synthesizing", text_preview=text[:60], language=language)
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp_path = tmp.name
-
-        try:
-            engine.save_to_file(text, tmp_path)
-            engine.runAndWait()
-
+            # Run in isolated subprocess to avoid libespeak C-level conflict with espeakng-loader
+            subprocess.run([sys.executable, "-c", script], check=True, capture_output=True)
             with open(tmp_path, "rb") as f:
-                wav_bytes = f.read()
-
-            logger.info("pyttsx3_synthesis_complete", text_preview=text[:60])
-            return wav_bytes
-        except Exception as e:
-            logger.warning("pyttsx3_synthesis_failed", error=str(e))
+                return f.read()
+        except subprocess.CalledProcessError as e:
+            logger.error("pyttsx3_subprocess_failed", error=e.stderr.decode('utf-8', errors='ignore'))
             return b""
-
         finally:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
     def speak(self, text: str, language: str = "hi") -> None:
         """

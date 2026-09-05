@@ -23,7 +23,8 @@ Phase 2 tools already registered.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+import inspect
+from typing import Any, Callable, Coroutine, cast
 
 from core.agent.schemas import ToolCall, ToolDefinition, ToolResult
 from core.logging import get_logger
@@ -33,8 +34,8 @@ from safety.policy import get_permission_level
 
 logger = get_logger(__name__)
 
-# Type alias for a synchronous tool handler
-ToolHandler = Callable[..., ToolResult]
+# Type alias for a synchronous or async tool handler
+ToolHandler = Callable[..., ToolResult | Coroutine[Any, Any, ToolResult]]
 
 
 class ToolNotFoundError(Exception):
@@ -208,7 +209,12 @@ class ToolRegistry:
         )
 
         try:
-            result = handler(**tool_call.arguments)
+            if inspect.iscoroutinefunction(handler):
+                raw_result = await handler(**tool_call.arguments)
+            else:
+                raw_result = handler(**tool_call.arguments)
+            
+            result = cast(ToolResult, raw_result)
             logger.info(
                 "tool_dispatch_complete",
                 tool_name=tool_name,
@@ -251,10 +257,18 @@ def build_default_registry() -> ToolRegistry:
     from tools.browser.browser_tools import (
         OPEN_URL_DEF,
         WEB_SEARCH_DEF,
+        READ_WEBPAGE_DEF,
         open_url,
         web_search,
+        read_webpage,
     )
     from tools.files.file_tools import OPEN_APPLICATION_DEF, open_application
+    from tools.files.fs_tools import (
+        LIST_DIRECTORY_DEF,
+        READ_FILE_DEF,
+        list_directory,
+        read_file,
+    )
     from tools.system.system_tools import (
         GET_BATTERY_DEF,
         GET_CPU_DEF,
@@ -268,6 +282,14 @@ def build_default_registry() -> ToolRegistry:
         get_ram_usage,
         get_current_time,
         get_system_info,
+    )
+    from tools.tasks.task_tools import (
+        ADD_TASK_DEF,
+        LIST_TASKS_DEF,
+        COMPLETE_TASK_DEF,
+        add_task,
+        list_tasks,
+        complete_task,
     )
 
     registry = ToolRegistry()
@@ -283,9 +305,19 @@ def build_default_registry() -> ToolRegistry:
     # ── Application tools ─────────────────────────────────────────────────────
     registry.register(OPEN_APPLICATION_DEF, open_application)
 
+    # ── File system tools ─────────────────────────────────────────────────────
+    registry.register(LIST_DIRECTORY_DEF, list_directory)
+    registry.register(READ_FILE_DEF, read_file)
+
     # ── Browser tools ─────────────────────────────────────────────────────────
     registry.register(OPEN_URL_DEF, open_url)
     registry.register(WEB_SEARCH_DEF, web_search)
+    registry.register(READ_WEBPAGE_DEF, read_webpage)
+
+    # ── Task tools ────────────────────────────────────────────────────────────
+    registry.register(ADD_TASK_DEF, add_task)
+    registry.register(LIST_TASKS_DEF, list_tasks)
+    registry.register(COMPLETE_TASK_DEF, complete_task)
 
     logger.info(
         "tool_registry_built",

@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS episodic_memories (
 );
 
 CREATE INDEX IF NOT EXISTS idx_episodic_conv_id ON episodic_memories(conversation_id);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
 """
 
 
