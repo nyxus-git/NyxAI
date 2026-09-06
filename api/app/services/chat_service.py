@@ -239,6 +239,7 @@ class ChatService:
         agent_response = await self._agent.run(
             message=message,
             history=history,
+            conversation_id=conv_key,
         )
 
         # Persist both messages

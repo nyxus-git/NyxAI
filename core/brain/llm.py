@@ -20,7 +20,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator
+from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 if TYPE_CHECKING:
     from core.agent.schemas import ToolCall
@@ -170,11 +170,11 @@ class LLMProvider(ABC):
         ...
 
     @abstractmethod
-    async def stream_chat(
+    def stream_chat(
         self,
         messages: list[Message],
         temperature: float = 0.7,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str, None]:
         """
         Stream a chat response token-by-token.
 

@@ -30,6 +30,7 @@ Design notes:
 from __future__ import annotations
 
 import uuid
+import aiosqlite
 
 from core.agent.schemas import AgentResponse, ToolCall, ToolResult
 from core.agent.tool_registry import ToolNotFoundError, ToolPermissionError, ToolRegistry, ToolValidationError
@@ -53,6 +54,7 @@ You now have access to tools that let you take real actions on this Linux comput
 When the user asks for something you can do with a tool:
   - Use the appropriate tool — do NOT make up information.
   - For complex requests, THINK step-by-step. You can use multiple tools sequentially to achieve a goal.
+  - IMPORTANT: If a task requires more than one step, use `create_plan` first to write down what you will do. As you complete steps, use `update_plan` to track your progress.
   - Do NOT call multiple tools in one response unless the user explicitly asks for multiple things.
   - After a tool returns its result, evaluate if you need to use another tool to finish the job, or respond naturally in the user's language.
 
@@ -103,6 +105,7 @@ class NyxAgent:
         self,
         message: str,
         history: list[Message] | None = None,
+        conversation_id: str | None = None,
     ) -> AgentResponse:
         """
         Process a user message with full tool-calling capability.
@@ -129,8 +132,23 @@ class NyxAgent:
         )
 
         # Build initial message list
-        # [system_prompt + agent_suffix] + [history] + [user_message]
+        # [system_prompt + agent_suffix + active_plan] + [history] + [user_message]
         system_content = get_system_prompt(compact=False) + AGENT_SYSTEM_PROMPT_SUFFIX
+        
+        # Inject active plan if it exists
+        if conversation_id:
+            try:
+                async with aiosqlite.connect("./data/nyx_memory.db") as conn:
+                    cursor = await conn.execute(
+                        "SELECT content FROM plans WHERE conversation_id = ? AND status = 'active'",
+                        (conversation_id,)
+                    )
+                    row = await cursor.fetchone()
+                    if row:
+                        system_content += f"\n\n## ACTIVE PLAN\nYou have an active plan for this task:\n{row[0]}"
+            except Exception as e:
+                logger.error("agent_fetch_plan_failed", error=str(e))
+                
         system_message = Message(role=MessageRole.SYSTEM, content=system_content)
         user_message = Message(role=MessageRole.USER, content=message)
 

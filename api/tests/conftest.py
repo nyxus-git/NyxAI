@@ -12,8 +12,9 @@ Key design decisions:
 """
 
 import uuid
+from unittest.mock import AsyncMock
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncGenerator, Generator
 
 import pytest
 from fastapi import FastAPI
@@ -81,7 +82,7 @@ class MockLLMProvider(LLMProvider):
         self,
         messages: list[Message],
         temperature: float = 0.7,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str, None]:
         for word in self.response_text.split():
             yield word + " "
 
@@ -124,11 +125,22 @@ def make_test_app(mock_provider: MockLLMProvider) -> FastAPI:
     from fastapi.middleware.cors import CORSMiddleware
 
     @asynccontextmanager
-    async def mock_lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def mock_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         """Inject mock services into app.state — no real Ollama calls."""
         app.state.settings = get_settings()
         app.state.llm_provider = mock_provider
-        app.state.chat_service = ChatService(llm_provider=mock_provider, agent=None)
+        
+        mock_memory_service = AsyncMock()
+        mock_memory_service.short_term = AsyncMock()
+        mock_memory_service.short_term.ensure_conversation = AsyncMock()
+        mock_memory_service.short_term.save_message = AsyncMock()
+        mock_memory_service.short_term.get_history = AsyncMock(return_value=[])
+        
+        app.state.chat_service = ChatService(
+            llm_provider=mock_provider,
+            memory_service=mock_memory_service,
+            agent=None
+        )
         app.state.agent = None
         app.state.tool_registry = None
         yield
@@ -162,7 +174,7 @@ def mock_llm_unhealthy() -> MockLLMProvider:
 
 
 @pytest.fixture
-def test_client(mock_llm: MockLLMProvider) -> TestClient:
+def test_client(mock_llm: MockLLMProvider) -> Generator[TestClient, None, None]:
     """
     Create a FastAPI TestClient with the mock LLM injected via a mock lifespan.
     The real startup (which calls Ollama) is completely bypassed.
@@ -173,7 +185,7 @@ def test_client(mock_llm: MockLLMProvider) -> TestClient:
 
 
 @pytest.fixture
-def test_client_unhealthy(mock_llm_unhealthy: MockLLMProvider) -> TestClient:
+def test_client_unhealthy(mock_llm_unhealthy: MockLLMProvider) -> Generator[TestClient, None, None]:
     """
     TestClient where Ollama is simulated as unreachable.
     Used to test graceful degradation behavior.

@@ -30,8 +30,11 @@ Or via Makefile:
     make dev
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+from datetime import datetime, timezone
+import aiosqlite
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +53,31 @@ from core.memory import MemoryService
 from core.memory.database import MemoryDatabase
 from voice.stt.transcriber import WhisperTranscriber
 from voice.tts.speaker import NyxTTSSpeaker
+
+
+async def reminder_poller() -> None:
+    """Background task to poll for due reminders."""
+    logger = get_logger(__name__)
+    while True:
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            async with aiosqlite.connect("./data/nyx_memory.db") as conn:
+                conn.row_factory = aiosqlite.Row
+                cursor = await conn.execute(
+                    "SELECT id, title FROM reminders WHERE status = 'pending' AND due_at <= ?",
+                    (now,)
+                )
+                rows = await cursor.fetchall()
+                for row in rows:
+                    logger.info("reminder_triggered", title=row["title"], reminder_id=row["id"])
+                    await conn.execute("UPDATE reminders SET status = 'completed' WHERE id = ?", (row["id"],))
+                
+                if rows:
+                    await conn.commit()
+        except Exception as e:
+            logger.error("reminder_poller_error", error=str(e))
+        
+        await asyncio.sleep(30)
 
 
 @asynccontextmanager
@@ -180,10 +208,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("nyxai_ready", message="NyxAI backend is ready to receive requests.")
 
+    # Start background tasks
+    poller_task = asyncio.create_task(reminder_poller())
+
     yield  # ← Application runs here
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("nyxai_shutting_down")
+    poller_task.cancel()
     await llm_provider.close()
     logger.info("nyxai_stopped")
 

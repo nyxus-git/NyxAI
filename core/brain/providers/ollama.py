@@ -15,7 +15,7 @@ Architecture notes:
 """
 
 import json
-from typing import AsyncIterator
+from typing import AsyncGenerator
 
 import httpx
 
@@ -215,7 +215,7 @@ class OllamaProvider(LLMProvider):
         self,
         messages: list[Message],
         temperature: float = 0.7,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str, None]:
         """
         Stream chat response chunks from Ollama's /api/chat with stream=true.
 

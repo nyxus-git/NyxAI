@@ -7,7 +7,7 @@ These tools allow the agent to add, list, and complete tasks.
 Tasks are stored in the SQLite database via direct connection.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import aiosqlite
 
 from core.agent.schemas import ToolDefinition, ToolParameter, ToolResult
@@ -58,6 +58,27 @@ COMPLETE_TASK_DEF = ToolDefinition(
         "task_id": ToolParameter(
             type="integer",
             description="The ID of the task to complete (must be a number).",
+            required=True,
+        ),
+    },
+    category="tasks",
+)
+
+SET_REMINDER_DEF = ToolDefinition(
+    name="set_reminder",
+    description=(
+        "Set a reminder for a specific task. "
+        "Use this when the user asks you to remind them to do something in a certain amount of time."
+    ),
+    parameters={
+        "title": ToolParameter(
+            type="string",
+            description="The description of the reminder (e.g. 'Check the oven').",
+            required=True,
+        ),
+        "minutes_from_now": ToolParameter(
+            type="integer",
+            description="How many minutes from now to trigger the reminder.",
             required=True,
         ),
     },
@@ -167,4 +188,35 @@ async def complete_task(task_id: int) -> ToolResult:
             tool_name="complete_task",
             success=False,
             error=f"Failed to complete task: {str(e)}",
+        )
+
+
+async def set_reminder(title: str, minutes_from_now: int) -> ToolResult:
+    """Set a reminder."""
+    logger.info("tool_set_reminder", title=title, minutes=minutes_from_now)
+    try:
+        now = datetime.now(timezone.utc)
+        due_at = (now + timedelta(minutes=minutes_from_now)).isoformat()
+        now_iso = now.isoformat()
+        
+        async with aiosqlite.connect(DB_PATH) as conn:
+            cursor = await conn.execute(
+                "INSERT INTO reminders (title, due_at, status, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?)",
+                (title, due_at, now_iso, now_iso),
+            )
+            await conn.commit()
+            rem_id = cursor.lastrowid
+            
+        return ToolResult(
+            tool_name="set_reminder",
+            success=True,
+            data={"id": rem_id, "title": title, "due_at": due_at},
+            display_text=f"Reminder set: '{title}' in {minutes_from_now} minutes.",
+        )
+    except Exception as e:
+        logger.error("tool_set_reminder_failed", error=str(e))
+        return ToolResult(
+            tool_name="set_reminder",
+            success=False,
+            error=f"Failed to set reminder: {str(e)}",
         )

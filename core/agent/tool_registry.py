@@ -266,8 +266,16 @@ def build_default_registry() -> ToolRegistry:
     from tools.files.fs_tools import (
         LIST_DIRECTORY_DEF,
         READ_FILE_DEF,
+        SEARCH_FILES_DEF,
+        MOVE_FILE_DEF,
+        COPY_FILE_DEF,
+        DELETE_FILE_DEF,
         list_directory,
         read_file,
+        search_files,
+        move_file,
+        copy_file,
+        delete_file,
     )
     from tools.system.system_tools import (
         GET_BATTERY_DEF,
@@ -287,9 +295,17 @@ def build_default_registry() -> ToolRegistry:
         ADD_TASK_DEF,
         LIST_TASKS_DEF,
         COMPLETE_TASK_DEF,
+        SET_REMINDER_DEF,
         add_task,
         list_tasks,
         complete_task,
+        set_reminder,
+    )
+    from tools.planning.planning_tools import (
+        CREATE_PLAN_DEF,
+        UPDATE_PLAN_DEF,
+        create_plan,
+        update_plan,
     )
 
     registry = ToolRegistry()
@@ -308,6 +324,10 @@ def build_default_registry() -> ToolRegistry:
     # ── File system tools ─────────────────────────────────────────────────────
     registry.register(LIST_DIRECTORY_DEF, list_directory)
     registry.register(READ_FILE_DEF, read_file)
+    registry.register(SEARCH_FILES_DEF, search_files)
+    registry.register(MOVE_FILE_DEF, move_file)
+    registry.register(COPY_FILE_DEF, copy_file)
+    registry.register(DELETE_FILE_DEF, delete_file)
 
     # ── Browser tools ─────────────────────────────────────────────────────────
     registry.register(OPEN_URL_DEF, open_url)
@@ -318,6 +338,11 @@ def build_default_registry() -> ToolRegistry:
     registry.register(ADD_TASK_DEF, add_task)
     registry.register(LIST_TASKS_DEF, list_tasks)
     registry.register(COMPLETE_TASK_DEF, complete_task)
+    registry.register(SET_REMINDER_DEF, set_reminder)
+
+    # ── Planning tools ────────────────────────────────────────────────────────
+    registry.register(CREATE_PLAN_DEF, create_plan)
+    registry.register(UPDATE_PLAN_DEF, update_plan)
 
     logger.info(
         "tool_registry_built",

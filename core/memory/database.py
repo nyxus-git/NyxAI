@@ -35,7 +35,7 @@ from core.logging import get_logger
 logger = get_logger(__name__)
 
 # Current schema version. Increment this when adding new columns or tables.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # DDL for all tables — created once on first startup if they don't exist.
 _CREATE_SCHEMA_SQL = """
@@ -88,6 +88,25 @@ CREATE INDEX IF NOT EXISTS idx_episodic_conv_id ON episodic_memories(conversatio
 CREATE TABLE IF NOT EXISTS tasks (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     title       TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    content         TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_plans_conv_id ON plans(conversation_id);
+
+CREATE TABLE IF NOT EXISTS reminders (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    due_at      TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'pending',
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
