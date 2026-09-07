@@ -1,0 +1,10 @@
+[
+    {
+        "user": "Hey Nyx, battery kitna bacha hai?",
+        "assistant": "{\"tool\": \"get_battery_status\", \"arguments\": {}}"
+    },
+    {
+        "user": "VS Code ughad.",
+        "assistant": "{\"tool\": \"open_application\", \"arguments\": {\"application\": \"code\"}}"
+    }
+]

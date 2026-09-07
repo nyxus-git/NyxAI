@@ -31,6 +31,14 @@ websockets>=13.0        # WebSocket support for /voice endpoint
 aiosqlite>=0.20.0        # Async SQLite driver for conversation + memory persistence
 chromadb>=0.5.0          # Local vector store for semantic memory retrieval
 
+# ─── Fine-Tuning (Phase 7) ────────────────────────────────────────────────────
+transformers>=4.40.0     # Base HF models and training
+peft>=0.11.0             # Parameter-Efficient Fine-Tuning (LoRA)
+trl>=0.9.0               # Transformer Reinforcement Learning (SFTTrainer)
+bitsandbytes>=0.43.0     # 4-bit quantization for QLoRA
+accelerate>=0.30.0       # Memory-efficient model loading
+datasets>=2.19.0         # Dataset management
+
 # ─── Testing ──────────────────────────────────────────────────────────────────
 pytest>=8.2.0
 pytest-asyncio>=0.23.0
