@@ -1,4 +1,4 @@
-.PHONY: help setup install dev test test-all test-cov lint clean pull-model voice
+.PHONY: help setup install dev test test-all test-cov evaluate lint clean pull-model voice service-install service-start service-stop service-status service-logs toggle-ui ptt
 
 PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
@@ -8,14 +8,22 @@ help:
 	@echo ""
 	@echo "NyxAI — Developer Commands"
 	@echo "────────────────────────────────────────"
-	@echo "  make install      Install Python dependencies"
-	@echo "  make dev          Start FastAPI dev server (auto-reload)"
-	@echo "  make voice        Start push-to-talk voice chat CLI (agent mode)"
-	@echo "  make test         Run full test suite (all phases)"
-	@echo "  make test-cov     Run tests with coverage report"
-	@echo "  make pull-model   Pull the default Ollama model"
-	@echo "  make lint         Run ruff linter"
-	@echo "  make clean        Remove __pycache__ and .pyc files"
+	@echo "  make install         Install Python dependencies"
+	@echo "  make dev             Start FastAPI dev server (auto-reload)"
+	@echo "  make voice           Start push-to-talk voice chat CLI (agent mode)"
+	@echo "  make test            Run full test suite (all phases)"
+	@echo "  make test-cov        Run tests with coverage report"
+	@echo "  make evaluate        Run PRD Section 31 system benchmark suite"
+	@echo "  make pull-model      Pull the default Ollama model"
+	@echo "  make service-install Install systemd user services & build UI"
+	@echo "  make service-start   Start all NyxAI systemd user services"
+	@echo "  make service-stop    Stop all NyxAI systemd user services"
+	@echo "  make service-status  Check persistent service status"
+	@echo "  make service-logs    Follow systemd user journal logs"
+	@echo "  make toggle-ui       Toggle Companion UI (SUPER+J)"
+	@echo "  make ptt             Push-To-Talk voice trigger (SUPER+SPACE)"
+	@echo "  make lint            Run ruff linter"
+	@echo "  make clean           Remove __pycache__ and .pyc files"
 	@echo ""
 
 # ─── Create venv + install dependencies ──────────────────────────────────────
@@ -43,6 +51,10 @@ test-all: test
 test-cov:
 	.venv/bin/pytest api/tests/ tests/ -v --tb=short --cov=api --cov=core --cov=voice --cov=tools --cov=safety --cov-report=term-missing
 
+# ─── Evaluation benchmark suite (PRD Section 31) ───────────────────────────────
+evaluate:
+	$(PYTHON) evaluation/evaluate.py --mock
+
 # ─── Push-to-talk voice chat CLI ──────────────────────────────────────────────
 voice:
 	$(PYTHON) scripts/voice_chat.py --mode agent
@@ -56,6 +68,28 @@ ui:
 	cd apps/companion && npm install && npm run dev
 
 companion-ui: ui
+
+# ─── Persistent Deployment (Phase 8) ───────────────────────────────────────────
+service-install:
+	./scripts/install.sh
+
+service-start:
+	./scripts/run.sh start
+
+service-stop:
+	./scripts/run.sh stop
+
+service-status:
+	./scripts/run.sh status
+
+service-logs:
+	./scripts/run.sh logs
+
+toggle-ui:
+	./scripts/run.sh toggle
+
+ptt:
+	./scripts/run.sh ptt
 
 # ─── Pull recommended Ollama model ────────────────────────────────────────────
 pull-model:

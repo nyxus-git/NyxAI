@@ -177,9 +177,9 @@ body {
   }
 }
 
-/* ─── Avatar Panel ───────────────────────────────────────────────────────── */
+/* ─── Animated Character & Jarvis HUD Panel ──────────────────────────────── */
 .avatar-panel {
-  background: var(--bg-card);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.75) 0%, rgba(9, 11, 16, 0.85) 100%);
   backdrop-filter: var(--glass-backdrop);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -187,78 +187,203 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.75rem 1.5rem;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.avatar-wrapper {
+.hud-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.avatar-stage {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: 220px;
+  height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: avatarFloat 4s ease-in-out infinite;
 }
 
-/* Glowing Neon Orb */
-.avatar-orb {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #00f2fe, #4facfe 50%, #9d4edd 90%);
-  box-shadow: 
-    0 0 40px rgba(0, 242, 254, 0.5),
-    inset 0 0 25px rgba(255, 255, 255, 0.6);
-  position: relative;
-  transition: all 0.4s ease;
-  animation: orbBreath 4s ease-in-out infinite;
+.nyx-character {
+  width: 210px;
+  height: 210px;
+  z-index: 2;
+  filter: drop-shadow(0 0 20px rgba(0, 242, 254, 0.3));
+  transition: all 0.3s ease;
 }
 
-.avatar-orb.thinking {
-  animation: orbRotate 2s linear infinite, orbBreath 1.5s ease-in-out infinite;
-  box-shadow: 0 0 55px rgba(157, 78, 221, 0.7), inset 0 0 30px rgba(255, 255, 255, 0.8);
+/* Floating Animation */
+@keyframes avatarFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
-.avatar-orb.listening {
-  transform: scale(1.1);
-  box-shadow: 0 0 65px rgba(16, 185, 129, 0.8), inset 0 0 35px rgba(255, 255, 255, 0.9);
-}
-
-.avatar-orb.speaking {
-  animation: orbSpeak 0.6s ease-in-out infinite alternate;
-}
-
-/* Pulse Rings */
-.pulse-ring {
+/* Jarvis Rotating HUD Rings */
+.jarvis-ring-outer {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 180px;
-  height: 180px;
+  width: 230px;
+  height: 230px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 242, 254, 0.3);
-  animation: ringExpand 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  border: 1.5px dashed rgba(0, 242, 254, 0.35);
+  animation: spinClockwise 16s linear infinite;
   pointer-events: none;
 }
 
-.pulse-ring.ring-2 {
-  animation-delay: 0.8s;
-  border-color: rgba(157, 78, 221, 0.3);
+.jarvis-ring-middle {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 1px dotted rgba(157, 78, 221, 0.4);
+  animation: spinCounterClockwise 12s linear infinite;
+  pointer-events: none;
 }
 
-.avatar-state-text {
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
+.jarvis-ring-outer.thinking {
+  border-color: rgba(157, 78, 221, 0.7);
+  animation-duration: 4s;
+}
+
+.jarvis-ring-outer.listening {
+  border-color: rgba(16, 185, 129, 0.7);
+  animation-duration: 8s;
+}
+
+.jarvis-ring-outer.speaking {
+  border-color: rgba(0, 242, 254, 0.8);
+  animation: pulseScale 1s ease-in-out infinite alternate;
+}
+
+@keyframes spinClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinCounterClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes pulseScale {
+  0% { transform: scale(0.98); opacity: 0.6; }
+  100% { transform: scale(1.05); opacity: 1; }
+}
+
+/* Eye Blinking Animation */
+.avatar-eyes {
+  transform-origin: 120px 120px;
+  animation: eyeBlink 4s infinite;
+}
+
+@keyframes eyeBlink {
+  0%, 96%, 100% {
+    transform: scaleY(1);
+  }
+  98% {
+    transform: scaleY(0.08);
+  }
+}
+
+/* Lip-Sync Mouth Animation */
+.mouth-speaking {
+  transform-origin: 120px 150px;
+  animation: lipSyncMove 0.22s ease-in-out infinite alternate;
+}
+
+@keyframes lipSyncMove {
+  0% {
+    transform: scaleY(0.4) scaleX(0.9);
+  }
+  100% {
+    transform: scaleY(1.3) scaleX(1.1);
+  }
+}
+
+/* Headset Equalizer Bars */
+.avatar-stage.speaking .equalizer-bar-l,
+.avatar-stage.speaking .equalizer-bar-r {
+  animation: eqBounce 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes eqBounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1.2); }
+}
+
+/* Speech Bubble */
+.avatar-speech-bubble {
+  margin-top: 1rem;
+  background: rgba(18, 24, 38, 0.85);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 1.2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  max-width: 85%;
+  text-align: center;
+  position: relative;
+}
+
+.avatar-speech-bubble::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 6px 6px 6px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 242, 254, 0.25) transparent;
+}
+
+.greeting-text {
+  font-size: 0.95rem;
+  color: var(--text-main);
   font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--accent-cyan);
+  letter-spacing: -0.01em;
+}
+
+/* Status Pill */
+.avatar-status-pill {
+  margin-top: 0.75rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid;
+  border-radius: var(--radius-full);
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-label {
+  font-size: 0.8rem;
+}
+
+.telemetry-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
 }
 
 /* ─── Chat Panel ─────────────────────────────────────────────────────────── */

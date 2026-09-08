@@ -1,0 +1,22 @@
+[Unit]
+Description=NyxAI Core Backend Service
+Documentation=https://github.com/nyyxus-preditor/NyxAI
+After=network.target sound.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/NyxAI
+ExecStart=%h/Projects/NyxAI/.venv/bin/uvicorn api.app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=%h/Projects/NyxAI/.venv/bin:/usr/local/bin:/usr/bin:/bin
+
+# Logging to user journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nyxai-core
+
+[Install]
+WantedBy=default.target

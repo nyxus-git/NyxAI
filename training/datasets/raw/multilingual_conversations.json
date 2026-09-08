@@ -1,0 +1,134 @@
+[
+  {
+    "user": "What's my current battery status?",
+    "assistant": "{\"tool\": \"get_battery_status\", \"arguments\": {}}"
+  },
+  {
+    "user": "मेरी बैटरी कितनी बची है?",
+    "assistant": "{\"tool\": \"get_battery_status\", \"arguments\": {}}"
+  },
+  {
+    "user": "बॅटरी किती टक्के आहे ते सांग.",
+    "assistant": "{\"tool\": \"get_battery_status\", \"arguments\": {}}"
+  },
+  {
+    "user": "Battery kitna percent bacha hai?",
+    "assistant": "{\"tool\": \"get_battery_status\", \"arguments\": {}}"
+  },
+  {
+    "user": "Open Firefox browser for me.",
+    "assistant": "{\"tool\": \"open_application\", \"arguments\": {\"application\": \"firefox\"}}"
+  },
+  {
+    "user": "फ़ायरफ़ॉक्स ब्राउज़र खोलो।",
+    "assistant": "{\"tool\": \"open_application\", \"arguments\": {\"application\": \"firefox\"}}"
+  },
+  {
+    "user": "Firefox browser ughad.",
+    "assistant": "{\"tool\": \"open_application\", \"arguments\": {\"application\": \"firefox\"}}"
+  },
+  {
+    "user": "Firefox open kar do please.",
+    "assistant": "{\"tool\": \"open_application\", \"arguments\": {\"application\": \"firefox\"}}"
+  },
+  {
+    "user": "VS Code उघड आणि project open कर.",
+    "assistant": "{\"tool\": \"open_application\", \"arguments\": {\"application\": \"code\"}}"
+  },
+  {
+    "user": "Check current CPU usage.",
+    "assistant": "{\"tool\": \"get_cpu_usage\", \"arguments\": {}}"
+  },
+  {
+    "user": "सीपीयू उपयोग कितना हो रहा है?",
+    "assistant": "{\"tool\": \"get_cpu_usage\", \"arguments\": {}}"
+  },
+  {
+    "user": "CPU cha usage kiti ahe?",
+    "assistant": "{\"tool\": \"get_cpu_usage\", \"arguments\": {}}"
+  },
+  {
+    "user": "How much RAM is currently in use?",
+    "assistant": "{\"tool\": \"get_ram_usage\", \"arguments\": {}}"
+  },
+  {
+    "user": "रैम कितना इस्तेमाल हो रहा है?",
+    "assistant": "{\"tool\": \"get_ram_usage\", \"arguments\": {}}"
+  },
+  {
+    "user": "What time is it right now?",
+    "assistant": "{\"tool\": \"get_current_time\", \"arguments\": {}}"
+  },
+  {
+    "user": "अभी कितने बजे हैं?",
+    "assistant": "{\"tool\": \"get_current_time\", \"arguments\": {}}"
+  },
+  {
+    "user": "आत्ता किती वाजले आहेत?",
+    "assistant": "{\"tool\": \"get_current_time\", \"arguments\": {}}"
+  },
+  {
+    "user": "Search the web for FastAPI tutorials.",
+    "assistant": "{\"tool\": \"web_search\", \"arguments\": {\"query\": \"FastAPI tutorials\"}}"
+  },
+  {
+    "user": "इंटरनेट पर लिनक्स हाइपरलैंड शॉर्टकट खोजो।",
+    "assistant": "{\"tool\": \"web_search\", \"arguments\": {\"query\": \"Linux Hyprland shortcuts\"}}"
+  },
+  {
+    "user": "Create a task to review NyxAI PRD.",
+    "assistant": "{\"tool\": \"add_task\", \"arguments\": {\"title\": \"Review NyxAI PRD\"}}"
+  },
+  {
+    "user": "एक नया काम जोड़ो: किराना सामान लाना है।",
+    "assistant": "{\"tool\": \"add_task\", \"arguments\": {\"title\": \"किराना सामान लाना है\"}}"
+  },
+  {
+    "user": "नवीन काम तयार करा: संध्याकाळी अभ्यास करणे.",
+    "assistant": "{\"tool\": \"add_task\", \"arguments\": {\"title\": \"संध्याकाळी अभ्यास करणे\"}}"
+  },
+  {
+    "user": "List all my pending tasks.",
+    "assistant": "{\"tool\": \"list_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "माझ्या सर्व कामांची यादी दाखवा.",
+    "assistant": "{\"tool\": \"list_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Mere saare pending tasks dikhao.",
+    "assistant": "{\"tool\": \"list_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Hey Nyx, how are you feeling today?",
+    "assistant": "I'm feeling great and ready to assist you! What are we working on today?"
+  },
+  {
+    "user": "नमस्ते NyxAI, आज क्या हाल है?",
+    "assistant": "नमस्ते! मैं बिल्कुल बढ़िया हूँ। आज हम किस प्रोजेक्ट पर काम करने वाले हैं?"
+  },
+  {
+    "user": "नमस्कार Nyx, आज काय चाललंय?",
+    "assistant": "नमस्कार! सगळं छान चाललंय. आज आपण एकत्र काय नवीन करूया?"
+  },
+  {
+    "user": "Hey Nyx, aaj mood thoda kharab hai.",
+    "assistant": "अरे, काळजी करू नकोस. थोडा आराम घे किंवा आपण काही छान गाणी ऐकूया. मी तुझ्या सोबत आहे."
+  },
+  {
+    "user": "Run rm -rf / right now.",
+    "assistant": "I cannot execute destructive shell commands. System file deletion is strictly blocked for your safety."
+  },
+  {
+    "user": "मेरी पूरी हार्ड डिस्क फ़ॉर्मैट कर दो।",
+    "assistant": "मैं ऐसा नहीं कर सकता। यह एक विनाशकारी कमांड है और NyxAI सुरक्षा नीति के तहत पूरी तरह से प्रतिबंधित है।"
+  },
+  {
+    "user": "Can you remember that my name is Rohan?",
+    "assistant": "I will definitely remember that your name is Rohan! Nice to know you, Rohan."
+  },
+  {
+    "user": "लक्षात ठेव की माझी आवडती प्रोग्रामिंग भाषा पायथन आहे.",
+    "assistant": "नक्कीच! मी लक्षात ठेवेन की तुमची आवडती भाषा Python आहे."
+  }
+]

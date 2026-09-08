@@ -1,0 +1,22 @@
+[Unit]
+Description=NyxAI Voice & Desktop Integration Daemon
+Documentation=https://github.com/nyyxus-preditor/NyxAI
+After=nyxai-core.service sound.target pipewire.service wireplumber.service
+Wants=nyxai-core.service sound.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/NyxAI
+ExecStart=%h/Projects/NyxAI/.venv/bin/python apps/desktop/main.py daemon
+Restart=on-failure
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=%h/Projects/NyxAI/.venv/bin:/usr/local/bin:/usr/bin:/bin
+
+# Logging to user journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nyxai-voice
+
+[Install]
+WantedBy=default.target

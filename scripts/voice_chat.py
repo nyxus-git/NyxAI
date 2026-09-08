@@ -75,6 +75,12 @@ def parse_args() -> argparse.Namespace:
         default="af_heart",
         help="Kokoro TTS voice name. Default: af_heart",
     )
+    parser.add_argument(
+        "--language",
+        default="auto",
+        choices=["auto", "hi", "mr", "en"],
+        help="Language for Whisper ('auto', 'hi', 'mr', 'en'). Default: auto",
+    )
     return parser.parse_args()
 
 
@@ -100,7 +106,7 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
 
     # ── Initialize components ──────────────────────────────────────────────────
     print(f"🤖 Mode: {args.mode.upper()}")
-    print(f"🧠 Whisper: {args.whisper} on {args.device}")
+    print(f"🧠 Whisper: {args.whisper} on {args.device} (lang={args.language})")
     print(f"🔊 TTS: {'disabled (text only)' if args.no_tts else args.voice}")
     print()
 
@@ -110,6 +116,7 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
         model=args.whisper,
         device=args.device,
         compute_type="float16" if args.device == "cuda" else "int8",
+        language=args.language,
     )
 
     tts_speaker: NyxTTSSpeaker | None = None
@@ -118,15 +125,33 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
 
     listener = PushToTalkListener(sample_rate=16000, channels=1)
 
-    # ── Initialize API connection ──────────────────────────────────────────────
-    # Import ChatService and LLM directly (no HTTP — direct in-process call)
+    # ── Initialize Memory & API connection ─────────────────────────────────────
+    # Import ChatService, MemoryService, and LLM directly (in-process call)
     from api.app.config import get_settings
     from api.app.services.chat_service import ChatService
     from core.agent.agent import NyxAgent
     from core.agent.tool_registry import build_default_registry
     from core.brain.providers.ollama import OllamaProvider
+    from core.memory import MemoryService
+    from core.memory.database import MemoryDatabase
 
     settings = get_settings()
+
+    memory_db = MemoryDatabase(db_path=settings.memory_db_path)
+    await memory_db.initialize()
+
+    memory_service = MemoryService(
+        db=memory_db,
+        semantic_memory_enabled=settings.semantic_memory_enabled,
+        ollama_base_url=settings.ollama_base_url,
+        embedding_model=settings.embedding_model,
+        chroma_path=settings.chroma_db_path,
+        top_k=settings.memory_retrieval_top_k,
+        max_history_turns=settings.max_history_turns,
+        long_term_enabled=settings.long_term_memory_enabled,
+        episodic_enabled=settings.episodic_memory_enabled,
+    )
+    await memory_service.initialize()
 
     llm_provider = OllamaProvider(
         base_url=settings.ollama_base_url,
@@ -136,7 +161,11 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
 
     tool_registry = build_default_registry()
     agent = NyxAgent(llm_provider=llm_provider, tool_registry=tool_registry)
-    chat_service = ChatService(llm_provider=llm_provider, agent=agent)
+    chat_service = ChatService(
+        llm_provider=llm_provider,
+        memory_service=memory_service,
+        agent=agent,
+    )
 
     agent_mode = AgentMode(args.mode)
     conversation_id: uuid.UUID | None = None

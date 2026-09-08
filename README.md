@@ -168,13 +168,41 @@ NyxAI/
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 — Backend Foundation | ✅ Complete | FastAPI, Ollama, chat API, logging, tests |
-| 2 — Agent & Tools | 🔜 Next | Tool registry, open_app, battery, browser |
-| 3 — Voice | ⏳ Planned | Push-to-talk, STT (faster-whisper), TTS |
-| 4 — Companion UI | ⏳ Planned | React + Tauri, animated avatar, SUPER+J |
-| 5 — Memory | ⏳ Planned | Short/long-term, episodic, SQLite, vectors |
-| 6 — Advanced Agent | ⏳ Planned | Multi-step planning, file tools |
-| 7 — Fine-Tuning | ⏳ Planned | LoRA/QLoRA for Hindi/tool-calling |
-| 8 — Deployment | ⏳ Planned | systemd services, auto-start |
+| 2 — Agent & Tools | ✅ Complete | Tool registry, open_app, battery, browser |
+| 3 — Voice | ✅ Complete | Push-to-talk, STT (faster-whisper), TTS (Kokoro/pyttsx3) |
+| 4 — Companion UI | ✅ Complete | React + Vite, animated avatar, WebSocket state sync |
+| 5 — Memory | ✅ Complete | Short/long-term, episodic, SQLite async storage |
+| 6 — Advanced Agent | ✅ Complete | Multi-step planning, file discovery/org, task reminders |
+| 7 — Fine-Tuning | ✅ Complete | LoRA/QLoRA datasets, validation, training pipeline |
+| 8 — Persistent Deployment | ✅ Complete | systemd user services, auto-start, Hyprland hotkeys |
+
+---
+
+## Persistent Deployment & Desktop Integration (Phase 8)
+
+NyxAI runs as autonomous systemd user services on Arch Linux / EndeavourOS with Hyprland:
+
+### 1. One-Click Install
+```bash
+make service-install
+# Or: ./scripts/install.sh
+```
+
+### 2. Service Management
+```bash
+make service-start    # Start all NyxAI user services
+make service-status   # Check unit states and backend health
+make service-logs     # Stream journalctl logs
+make service-stop     # Stop all services
+```
+
+### 3. Hyprland Keybindings
+Add to `~/.config/hypr/hyprland.conf`:
+```ini
+# NyxAI Companion & Voice Keybindings
+bind = SUPER, J, exec, ~/Projects/NyxAI/scripts/run.sh toggle
+bind = SUPER, SPACE, exec, ~/Projects/NyxAI/scripts/run.sh ptt
+```
 
 ---
 

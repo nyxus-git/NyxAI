@@ -1,0 +1,22 @@
+[Unit]
+Description=NyxAI Companion UI Service
+Documentation=https://github.com/nyyxus-preditor/NyxAI
+After=nyxai-core.service network.target
+Wants=nyxai-core.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/NyxAI/apps/companion
+ExecStart=/usr/bin/npm run preview -- --host 127.0.0.1 --port 5173
+Restart=on-failure
+RestartSec=5s
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+# Logging to user journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nyxai-ui
+
+[Install]
+WantedBy=default.target

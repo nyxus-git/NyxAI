@@ -355,30 +355,34 @@ engine.runAndWait()
     def speak(self, text: str, language: str = "hi") -> None:
         """
         Speak text aloud using pyttsx3 (blocks until complete).
+        Synthesizes audio via isolated subprocess and plays via sounddevice.
         """
         if not text.strip():
             return
 
-        engine = self._get_engine()
-
-        lang_code = self._get_lang_code(language)
-        try:
-            voices = engine.getProperty("voices")
-            if isinstance(voices, (list, tuple)):
-                for voice in voices:
-                    voice_id = getattr(voice, "id", "")
-                    if lang_code in str(voice_id).lower():
-                        engine.setProperty("voice", voice_id)
-                        break
-        except Exception:
-            pass
-
         logger.info("pyttsx3_speaking", text_preview=text[:60], language=language)
         try:
-            engine.say(text)
-            engine.runAndWait()
+            wav_bytes = self.synthesize(text, language)
+            if not wav_bytes:
+                logger.warning("pyttsx3_synthesis_returned_empty")
+                return
+
+            import io
+            import wave
+            import numpy as np
+            import sounddevice as sd
+
+            with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+                sample_rate = wf.getframerate()
+                raw_bytes = wf.readframes(wf.getnframes())
+                audio_int16 = np.frombuffer(raw_bytes, dtype=np.int16)
+                audio_float32 = audio_int16.astype(np.float32) / 32768.0
+
+            sd.play(audio_float32, samplerate=sample_rate)
+            sd.wait()
+            logger.debug("pyttsx3_speaking_done")
         except Exception as e:
-            logger.warning("pyttsx3_speaking_failed", error=str(e), hint="Install espeak-ng via pacman/apt")
+            logger.warning("pyttsx3_speaking_failed", error=str(e), hint="Ensure espeak-ng and sounddevice are installed")
 
     def get_engine_name(self) -> str:
         return "pyttsx3/espeak-ng"

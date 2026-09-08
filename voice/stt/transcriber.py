@@ -150,11 +150,13 @@ class WhisperTranscriber(STTProvider):
         device: str = "cuda",
         compute_type: str = "float16",
         language: str = "auto",
+        initial_prompt: str | None = "Namaste NyxAI. English, Hindi, Marathi, Hinglish: kaise ho, kya chal raha hai, काय चाललंय.",
     ) -> None:
         self._model_name = model
         self._device = device
         self._compute_type = compute_type
         self._language = language if language != "auto" else None
+        self._initial_prompt = initial_prompt
         self._model: Any = None  # Lazy-loaded on first call
 
         logger.info(
@@ -326,6 +328,7 @@ class WhisperTranscriber(STTProvider):
                 audio_float32,
                 language=self._language,
                 beam_size=5,
+                initial_prompt=self._initial_prompt,
                 vad_filter=True,          # Skip silent parts (VAD built into faster-whisper)
                 vad_parameters=dict(
                     min_silence_duration_ms=300,
