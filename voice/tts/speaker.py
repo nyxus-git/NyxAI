@@ -283,16 +283,29 @@ class Pyttsx3Speaker(TTSProvider):
         """Deprecated: We no longer hold an engine in-process."""
         return None
 
-    def _get_lang_code(self, language: str) -> str:
-        """Map language code to eSpeak voice identifier."""
-        mapping = {
-            "hi": "hi",      # Hindi
-            "mr": "mr",      # Marathi
-            "en": "en-us",   # English (fallback)
-            "pa": "pa",      # Punjabi
-            "bn": "bn",      # Bengali
+    def _get_lang_candidates(self, language: str) -> list[str]:
+        """Return priority-ordered eSpeak voice ID candidates for the language.
+
+        eSpeak-NG voice naming is inconsistent across distros. We try multiple
+        known IDs in order so that at least one matches on Arch/EndeavourOS.
+
+        Args:
+            language: Language code ('hi', 'mr', 'en', etc.)
+
+        Returns:
+            List of candidate voice IDs to try, in priority order.
+        """
+        candidates: dict[str, list[str]] = {
+            "hi":  ["hi", "hi-in", "hindi"],                   # Hindi
+            "mr":  ["mr", "mb-mr1", "mr-in", "marathi", "hi"], # Marathi (fallback to Hindi)
+            "en":  ["en-us", "en", "english"],                  # English
+            "pa":  ["pa", "punjabi"],                           # Punjabi
+            "bn":  ["bn", "bengali"],                           # Bengali
+            "gu":  ["gu", "gujarati"],                          # Gujarati
+            "ta":  ["ta", "tamil"],                             # Tamil
+            "te":  ["te", "telugu"],                            # Telugu
         }
-        return mapping.get(language, "en-us")
+        return candidates.get(language, ["en-us"])
 
     def synthesize(self, text: str, language: str = "hi") -> bytes:
         """
@@ -320,8 +333,14 @@ class Pyttsx3Speaker(TTSProvider):
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             tmp_path = f.name
 
-        # We pass voice_id if available, otherwise fallback to the language mapping code
-        target_voice = self._voice_id or self._get_lang_code(language)
+        # Build candidate list: voice_id override first, then language candidates
+        if self._voice_id:
+            candidates = [self._voice_id] + self._get_lang_candidates(language)
+        else:
+            candidates = self._get_lang_candidates(language)
+
+        # Serialize candidates as a Python list literal for embedding in the script
+        candidates_repr = repr(candidates)
 
         script = f"""
 import pyttsx3
@@ -330,23 +349,48 @@ text = base64.b64decode('{encoded_text}').decode('utf-8')
 engine = pyttsx3.init()
 engine.setProperty('rate', {self._speed})
 
-# Find and set voice safely in the subprocess
-target_voice = '{target_voice}'.lower()
-for voice in engine.getProperty('voices'):
-    if target_voice in str(getattr(voice, 'id', '')).lower() or target_voice in str(getattr(voice, 'name', '')).lower():
-        engine.setProperty('voice', voice.id)
+candidates = {candidates_repr}
+all_voices = engine.getProperty('voices')
+selected_voice = None
+
+for candidate in candidates:
+    candidate_lower = candidate.lower()
+    for voice in all_voices:
+        vid = str(getattr(voice, 'id', '')).lower()
+        vname = str(getattr(voice, 'name', '')).lower()
+        if candidate_lower in vid or candidate_lower in vname:
+            engine.setProperty('voice', voice.id)
+            selected_voice = voice.id
+            break
+    if selected_voice:
         break
+
+import sys
+if selected_voice:
+    print(f'[pyttsx3] Using voice: {{selected_voice}}', file=sys.stderr)
+else:
+    print(f'[pyttsx3] WARNING: No matching voice found for candidates {{candidates}}', file=sys.stderr)
 
 engine.save_to_file(text, '{tmp_path}')
 engine.runAndWait()
 """
         try:
-            # Run in isolated subprocess to avoid libespeak C-level conflict with espeakng-loader
-            subprocess.run([sys.executable, "-c", script], check=True, capture_output=True)
+            # Run in isolated subprocess to avoid libespeak C-level conflict
+            proc = subprocess.run(
+                [sys.executable, "-c", script],
+                check=True,
+                capture_output=True,
+            )
+            # Log the voice selection result from subprocess stderr
+            if proc.stderr:
+                stderr_msg = proc.stderr.decode("utf-8", errors="ignore").strip()
+                if stderr_msg:
+                    logger.debug("pyttsx3_subprocess_stderr", message=stderr_msg)
+
             with open(tmp_path, "rb") as f:
                 return f.read()
         except subprocess.CalledProcessError as e:
-            logger.error("pyttsx3_subprocess_failed", error=e.stderr.decode('utf-8', errors='ignore'))
+            logger.error("pyttsx3_subprocess_failed", error=e.stderr.decode("utf-8", errors="ignore"))
             return b""
         finally:
             if os.path.exists(tmp_path):

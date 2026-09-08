@@ -215,14 +215,20 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 await _send(websocket, VoiceIdleMessage().model_dump())
                 continue
 
-            # ── Step 3: Synthesize response audio ─────────────────────────────
+            # ── Step 3: Synthesize response audio ─────────────────────────
             try:
                 if tts_speaker is None:
                     raise RuntimeError("TTS speaker not initialized. Check server startup.")
 
+                # Detect the language of the LLM's *response* (not the user's input).
+                # This matters for mixed conversations: user may speak Hinglish but
+                # NyxAI may respond in Devanagari Hindi — TTS must follow the response.
+                from core.brain.language import detect_response_language
+                response_lang = detect_response_language(response_text)
+
                 audio_out = await loop.run_in_executor(
                     None,
-                    lambda: tts_speaker.synthesize(response_text, language=result.language),
+                    lambda: tts_speaker.synthesize(response_text, language=response_lang),
                 )
                 audio_out_b64 = base64.b64encode(audio_out).decode()
 

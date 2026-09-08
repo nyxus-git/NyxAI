@@ -134,10 +134,12 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             try:
                 import asyncio
                 import base64
+                from core.brain.language import detect_response_language
                 loop = asyncio.get_event_loop()
+                response_lang = detect_response_language(response_text)
                 audio_bytes = await loop.run_in_executor(
                     None,
-                    lambda: tts_speaker.synthesize(response_text),
+                    lambda: tts_speaker.synthesize(response_text, language=response_lang),
                 )
                 if audio_bytes:
                     audio_b64 = base64.b64encode(audio_bytes).decode()
