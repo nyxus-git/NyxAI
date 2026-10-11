@@ -20,7 +20,7 @@ Usage:
 
 from __future__ import annotations
 
-# ─── Unicode Block Ranges ──────────────────────────────────────────────────────
+# Unicode Block Ranges
 
 # Indic script ranges with their primary language codes
 _INDIC_RANGES: list[tuple[int, int, str]] = [

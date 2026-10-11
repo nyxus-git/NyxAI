@@ -7,16 +7,16 @@ Every tool must have a permission level assigned in safety/policy.py.
 The permission level determines whether a tool can be called automatically
 or requires user confirmation.
 
-Permission Hierarchy (from PRD Section 24):
+Permission Hierarchy:
   Level 1 — SAFE:         Auto-execute. Read-only, no side effects.
   Level 2 — CONFIRMATION: User must approve before execution.
   Level 3 — HIGH_RISK:    Explicit confirmation + extra validation required.
   Level 4 — BLOCKED:      Never execute under any circumstances.
 
 Design note:
-  In Phase 2, only SAFE tools auto-execute. CONFIRMATION tools return a
-  pending state to the API — the client must send back an approval.
-  HIGH_RISK and BLOCKED tools are rejected immediately.
+  Only SAFE tools auto-execute. CONFIRMATION tools return a pending
+  state to the API requiring user approval. HIGH_RISK and BLOCKED tools
+  are rejected.
 """
 
 from enum import IntEnum
@@ -67,7 +67,7 @@ def can_auto_execute(level: PermissionLevel) -> bool:
     """
     Return True if a tool at this permission level can execute without user approval.
 
-    In Phase 2: only SAFE tools auto-execute.
+    Only SAFE tools auto-execute.
     CONFIRMATION, HIGH_RISK, and BLOCKED all require human review.
 
     Args:

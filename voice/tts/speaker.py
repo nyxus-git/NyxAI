@@ -39,7 +39,7 @@ logger = get_logger(__name__)
 _PYTTSX3_LANGUAGES = {"hi", "mr", "pa", "bn", "gu", "te", "ta", "kn"}
 
 
-# ─── Abstract Provider ────────────────────────────────────────────────────────
+# Abstract Provider
 
 
 class TTSProvider(ABC):
@@ -84,7 +84,7 @@ class TTSProvider(ABC):
         ...
 
 
-# ─── Kokoro TTS (English — High Quality) ─────────────────────────────────────
+# Kokoro TTS (English — High Quality)
 
 
 class KokoroSpeaker(TTSProvider):
@@ -255,7 +255,7 @@ class KokoroSpeaker(TTSProvider):
         return f"kokoro/{self._voice}"
 
 
-# ─── Pyttsx3 TTS (Hindi/Marathi Fallback) ────────────────────────────────────
+# Pyttsx3 TTS (Hindi/Marathi Fallback)
 
 
 class Pyttsx3Speaker(TTSProvider):
@@ -432,7 +432,7 @@ engine.runAndWait()
         return "pyttsx3/espeak-ng"
 
 
-# ─── Smart Router — NyxTTSSpeaker ─────────────────────────────────────────────
+# Smart Router — NyxTTSSpeaker
 
 
 class NyxTTSSpeaker(TTSProvider):
@@ -504,7 +504,7 @@ class NyxTTSSpeaker(TTSProvider):
         return "nyx-tts-router"
 
 
-# ─── Utility ──────────────────────────────────────────────────────────────────
+# Utility
 
 
 def _float32_to_wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:

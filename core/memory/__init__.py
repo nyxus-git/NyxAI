@@ -1,7 +1,7 @@
 """
 core/memory/__init__.py
 
-Memory system for NyxAI — Phase 5.
+Memory system for NyxAI.
 
 Exports the MemoryService aggregator which is the single dependency
 injected into ChatService and API routers. This keeps the interface

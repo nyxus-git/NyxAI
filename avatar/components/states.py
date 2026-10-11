@@ -1,7 +1,7 @@
 """
 avatar/components/states.py
 
-NyxAI Avatar State Machine (PRD Section 17).
+NyxAI Avatar State Machine.
 
 Manages avatar emotional and interaction states:
   - IDLE: Waiting for user input (subtle breathing/blinking)
@@ -22,7 +22,7 @@ from typing import Any
 
 
 class AvatarState(str, Enum):
-    """Core avatar states defined in PRD Section 17."""
+    """Core avatar animation and emotional states."""
 
     IDLE = "idle"
     LISTENING = "listening"
@@ -57,7 +57,7 @@ class AvatarStateManager:
         return self.to_event()
 
     def to_event(self) -> dict[str, Any]:
-        """Format as avatar_state event payload matching PRD Section 17."""
+        """Format as avatar_state event payload."""
         return {
             "event": "avatar_state",
             "state": self._current_state.value,

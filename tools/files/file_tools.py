@@ -19,7 +19,7 @@ from core.logging import get_logger
 logger = get_logger(__name__)
 
 
-# ─── Tool Definitions ─────────────────────────────────────────────────────────
+# Tool Definitions
 
 OPEN_APPLICATION_DEF = ToolDefinition(
     name="open_application",
@@ -42,7 +42,7 @@ OPEN_APPLICATION_DEF = ToolDefinition(
 )
 
 
-# ─── Tool Implementations ─────────────────────────────────────────────────────
+# Tool Implementations
 
 
 def open_application(application: str) -> ToolResult:

@@ -17,8 +17,8 @@ Usage:
     tools_for_ollama = registry.get_tools_for_ollama()
     result = await registry.dispatch(tool_call)
 
-A pre-built DEFAULT_REGISTRY is available at module level with all
-Phase 2 tools already registered.
+A pre-built registry is available via build_default_registry() with all
+built-in tools registered.
 """
 
 from __future__ import annotations
@@ -69,8 +69,8 @@ class ToolRegistry:
     and argument validation before any tool executes.
 
     Thread safety note:
-      In Phase 2, tools are registered at startup and never modified
-      during request handling. This is safe for concurrent requests.
+      Tools are registered at startup and never modified during request
+      handling. This is safe for concurrent requests.
     """
 
     def __init__(self) -> None:
@@ -138,7 +138,7 @@ class ToolRegistry:
         This is the safe execution path. It enforces:
         1. The tool exists in the registry
         2. The tool is not BLOCKED by the safety policy
-        3. The tool is auto-executable (SAFE level) — CONFIRMATION+ is rejected in Phase 2
+        3. The tool is auto-executable (SAFE level) — CONFIRMATION+ requires approval
         4. The arguments pass CommandValidator checks
 
         Args:
@@ -168,7 +168,7 @@ class ToolRegistry:
             logger.error("tool_dispatch_blocked", tool_name=tool_name)
             raise ToolPermissionError(tool_name, permission)
 
-        # 3. In Phase 2 — only auto-execute SAFE tools
+        # 3. Only auto-execute SAFE tools
         #    CONFIRMATION tools return a pending result for the API client to approve
         if not can_auto_execute(permission):
             logger.info(
@@ -240,14 +240,12 @@ class ToolRegistry:
             )
 
 
-# ─── Default Registry ─────────────────────────────────────────────────────────
-# Pre-built registry with all Phase 2 tools registered.
-# Import this in main.py and pass it to NyxAgent.
+# Default Registry
 
 
 def build_default_registry() -> ToolRegistry:
     """
-    Build and return the default tool registry with all Phase 2 tools.
+    Build and return the default tool registry with all built-in tools.
 
     Called once at application startup in main.py lifespan.
 
@@ -310,7 +308,7 @@ def build_default_registry() -> ToolRegistry:
 
     registry = ToolRegistry()
 
-    # ── System tools ──────────────────────────────────────────────────────────
+    # ── System tools
     registry.register(GET_BATTERY_DEF, get_battery_status)
     registry.register(GET_CPU_DEF, get_cpu_usage)
     registry.register(GET_RAM_DEF, get_ram_usage)
@@ -318,10 +316,10 @@ def build_default_registry() -> ToolRegistry:
     registry.register(GET_SYSINFO_DEF, get_system_info)
     registry.register(GET_GPU_DEF, get_gpu_status)
 
-    # ── Application tools ─────────────────────────────────────────────────────
+    # ── Application tools
     registry.register(OPEN_APPLICATION_DEF, open_application)
 
-    # ── File system tools ─────────────────────────────────────────────────────
+    # ── File system tools
     registry.register(LIST_DIRECTORY_DEF, list_directory)
     registry.register(READ_FILE_DEF, read_file)
     registry.register(SEARCH_FILES_DEF, search_files)
@@ -329,18 +327,18 @@ def build_default_registry() -> ToolRegistry:
     registry.register(COPY_FILE_DEF, copy_file)
     registry.register(DELETE_FILE_DEF, delete_file)
 
-    # ── Browser tools ─────────────────────────────────────────────────────────
+    # ── Browser tools
     registry.register(OPEN_URL_DEF, open_url)
     registry.register(WEB_SEARCH_DEF, web_search)
     registry.register(READ_WEBPAGE_DEF, read_webpage)
 
-    # ── Task tools ────────────────────────────────────────────────────────────
+    # ── Task tools
     registry.register(ADD_TASK_DEF, add_task)
     registry.register(LIST_TASKS_DEF, list_tasks)
     registry.register(COMPLETE_TASK_DEF, complete_task)
     registry.register(SET_REMINDER_DEF, set_reminder)
 
-    # ── Planning tools ────────────────────────────────────────────────────────
+    # ── Planning tools
     registry.register(CREATE_PLAN_DEF, create_plan)
     registry.register(UPDATE_PLAN_DEF, update_plan)
 

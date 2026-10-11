@@ -5,7 +5,7 @@ scripts/voice_chat.py
 NyxAI Push-to-Talk CLI
 
 A standalone voice chat script that lets you speak to NyxAI directly
-from the terminal. This is Phase 3's primary voice interface.
+from the terminal.
 
 Usage:
     python scripts/voice_chat.py                    # companion mode
@@ -104,7 +104,7 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
 
     print_banner()
 
-    # ── Initialize components ──────────────────────────────────────────────────
+    # Initialize components
     print(f"🤖 Mode: {args.mode.upper()}")
     print(f"🧠 Whisper: {args.whisper} on {args.device} (lang={args.language})")
     print(f"🔊 TTS: {'disabled (text only)' if args.no_tts else args.voice}")
@@ -125,7 +125,7 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
 
     listener = PushToTalkListener(sample_rate=16000, channels=1)
 
-    # ── Initialize Memory & API connection ─────────────────────────────────────
+    # Initialize Memory & API connection
     # Import ChatService, MemoryService, and LLM directly (in-process call)
     from api.app.config import get_settings
     from api.app.services.chat_service import ChatService
@@ -173,7 +173,7 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
     print(f"✅ Ready! Ollama model: {settings.ollama_model}")
     print("─" * 60)
 
-    # ── Main loop ──────────────────────────────────────────────────────────────
+    # Main loop
     turn = 0
     while True:
         try:

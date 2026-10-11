@@ -11,7 +11,7 @@ Architecture notes:
   - Uses httpx.AsyncClient for non-blocking HTTP calls.
   - Implements streaming via Ollama's NDJSON streaming endpoint.
   - Provides health checks to verify both Ollama and the model are ready.
-  - Phase 2: Implements chat_with_tools() using Ollama's native tool calling.
+  - Implements chat_with_tools() using Ollama's native tool calling.
 """
 
 import json

@@ -74,8 +74,8 @@ class NyxAgent:
     """
     The NyxAI agent that combines LLM reasoning with tool execution.
 
-    This is the core of Phase 2. It wraps an LLMProvider and a ToolRegistry
-    to create an agent capable of using tools to help the user.
+    Wraps an LLMProvider and a ToolRegistry to create an agent capable
+    of using tools to help the user.
 
     Args:
         llm_provider: The LLM backend to use for reasoning.
@@ -159,7 +159,7 @@ class NyxAgent:
         tool_result_data: dict | None = None
         iterations = 0
 
-        # ── Agentic loop ──────────────────────────────────────────────────────
+        # ── Agentic loop
         while iterations < self._max_iterations:
             iterations += 1
 
@@ -258,7 +258,7 @@ class NyxAgent:
                     iterations=iterations,
                 )
 
-        # ── Max iterations reached — return last content if available ──────────
+        # ── Max iterations reached — return last content if available
         logger.warning(
             "agent_max_iterations_reached",
             conversation_prefix=conv_id,

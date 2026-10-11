@@ -8,22 +8,18 @@ running entirely on your hardware with no cloud dependency.
 
 ---
 
-## Current Status — Phase 1: Backend Foundation ✅
+## What NyxAI Can Do
 
-The backend foundation is complete and working. Phase 1 delivers:
-
-- **FastAPI backend** with `/health` and `/chat` endpoints
-- **Local LLM** via Ollama (default: `qwen2.5:3b`, fully configurable)
-- **Multilingual support** — English, Hindi, Marathi, Hinglish
-- **LLM provider abstraction** — swap backends with zero code changes
-- **NyxAI personality** via system prompt
-- **Structured logging** with structlog
-- **Configuration management** via Pydantic Settings + `.env`
-- **23 automated tests** (run without GPU/Ollama)
+- 🗣️ **Multilingual voice chat** — English, Hindi, Marathi, Hinglish — speak naturally, get a spoken response
+- 🤖 **Desktop agent** — open apps, search the web, manage files, check system stats, set task reminders
+- 🧠 **4-layer memory** — remembers facts about you across all sessions (short-term, long-term, episodic, semantic)
+- 🔒 **Privacy-first** — everything runs locally, nothing leaves your machine
+- ⚡ **Push-to-talk** — `Super+Space` to speak, `Super+J` to toggle the companion UI
+- 🎛️ **Fine-tunable** — LoRA/QLoRA training pipeline included for personalizing the model
 
 ---
 
-## Hardware Target
+## Hardware
 
 | Component | Spec |
 |-----------|------|
@@ -37,13 +33,13 @@ The backend foundation is complete and working. Phase 1 delivers:
 
 ## Recommended Model
 
-**`qwen2.5:3b`** — ~2 GB VRAM, excellent multilingual support (EN/HI/MR), strong instruction following.
+**`qwen2.5:3b`** — ~2 GB VRAM, excellent multilingual support (EN/HI/MR), native function calling.
 
 ```bash
 ollama pull qwen2.5:3b
 ```
 
-Change model without code changes:
+Swap the model without touching any code:
 ```bash
 OLLAMA_MODEL=llama3.2:3b make dev
 ```
@@ -59,24 +55,23 @@ OLLAMA_MODEL=llama3.2:3b make dev
 ### Setup
 
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/NyxAI.git
+git clone https://github.com/nyxus-git/NyxAI.git
 cd NyxAI
 
-# Create virtual environment and install dependencies
+# Create virtualenv and install all dependencies
 make setup
 
-# Pull the recommended model (one-time, ~2 GB)
+# Pull the default model (one-time, ~2 GB)
 make pull-model
 
-# Copy environment config
+# Copy config
 cp .env.example .env
 
 # Start the backend
 make dev
 ```
 
-### Test
+### Test It
 
 ```bash
 # Health check
@@ -93,14 +88,14 @@ curl -X POST http://127.0.0.1:8000/chat \
   -d '{"message": "Hey Nyx! आज काय plan आहे?"}'
 
 # Interactive API docs
-open http://127.0.0.1:8000/docs
+xdg-open http://127.0.0.1:8000/docs
 ```
 
 ### Run Tests
 
 ```bash
 make test
-# 23 passed — no GPU or Ollama required
+# All tests pass — no GPU or Ollama required
 ```
 
 ---
@@ -108,28 +103,37 @@ make test
 ## Architecture
 
 ```
-User (curl / Tauri frontend)
+User (Voice / UI / curl)
         │
         ▼
   FastAPI Backend (:8000)
-  ┌──────────────────────────┐
-  │  GET  /health            │
-  │  POST /chat              │
-  │                          │
-  │  ChatService             │
-  │      │                   │
-  │      ▼                   │
-  │  LLMProvider (abstract)  │
-  │      │                   │
-  │      ▼                   │
-  │  OllamaProvider          │
-  └──────────┬───────────────┘
-             │ HTTP REST
-             ▼
-       Ollama (:11434)
-             │
-             ▼
-       qwen2.5:3b (local GPU)
+  ┌─────────────────────────────────────────┐
+  │  /health  /chat  /agent  /voice  /memory│
+  │                                         │
+  │  NyxAgent ←──── ToolRegistry            │
+  │      │               │                  │
+  │      │          [battery, browser,       │
+  │      │           files, tasks,           │
+  │      │           planning, system]       │
+  │      │                                  │
+  │  MemoryService                          │
+  │      ├── ShortTermMemory  (SQLite)       │
+  │      ├── LongTermMemory   (SQLite)       │
+  │      ├── EpisodicMemory   (SQLite)       │
+  │      └── SemanticMemory   (ChromaDB)     │
+  │                                         │
+  │  LLMProvider (abstract)                 │
+  │      └── OllamaProvider                 │
+  └──────────────┬──────────────────────────┘
+                 │ HTTP REST
+                 ▼
+           Ollama (:11434)
+                 │
+                 ▼
+           qwen2.5:3b  (RTX 4050, local GPU)
+
+Voice Pipeline (separate service):
+  Mic → faster-whisper (CUDA) → text → NyxAgent → Kokoro TTS / pyttsx3 → Speaker
 ```
 
 ---
@@ -138,7 +142,7 @@ User (curl / Tauri frontend)
 
 ```
 NyxAI/
-├── api/                    # FastAPI backend (Phase 1)
+├── api/                    # FastAPI backend
 │   └── app/
 │       ├── main.py         # App entry point + lifespan
 │       ├── config.py       # Pydantic Settings
@@ -147,71 +151,89 @@ NyxAI/
 │       └── schemas/        # Request/response models
 │
 ├── core/                   # Shared AI logic
-│   └── brain/
-│       ├── llm.py          # Abstract LLMProvider interface
-│       ├── prompts.py      # NyxAI personality
-│       └── providers/
-│           └── ollama.py   # Ollama implementation
+│   ├── brain/
+│   │   ├── llm.py          # Abstract LLMProvider interface
+│   │   ├── prompts.py      # NyxAI personality & system prompt
+│   │   ├── language.py     # Unicode-based language detection
+│   │   └── providers/
+│   │       └── ollama.py   # Ollama implementation
+│   ├── agent/
+│   │   ├── agent.py        # Agentic reasoning loop
+│   │   ├── tool_registry.py
+│   │   └── schemas.py
+│   └── memory/
+│       ├── short_term.py   # SQLite conversation history
+│       ├── long_term.py    # Persistent user facts
+│       ├── episodic.py     # Event journal
+│       └── semantic.py     # ChromaDB vector search
 │
-├── tools/                  # Agent tools (Phase 2)
-├── safety/                 # Permission system (Phase 2)
-├── voice/                  # STT/TTS pipeline (Phase 3)
-├── apps/companion/         # React/Tauri UI (Phase 4)
-├── training/               # LoRA fine-tuning (Phase 7)
-└── deployment/systemd/     # systemd services (Phase 8)
+├── tools/                  # Agent tools
+│   ├── system/             # Battery, CPU, RAM, time
+│   ├── browser/            # Web search, open URL, read page
+│   ├── files/              # Read, list, search, move, copy, delete
+│   ├── tasks/              # Add, list, complete tasks, reminders
+│   └── planning/           # Multi-step plan creation
+│
+├── safety/                 # Permission system & command validator
+├── voice/                  # STT (faster-whisper) + TTS (Kokoro/pyttsx3)
+├── apps/companion/         # React + Vite + Tauri companion UI
+├── training/               # LoRA/QLoRA fine-tuning pipeline
+└── deployment/systemd/     # systemd user services
 ```
 
 ---
 
-## Development Roadmap
+## Persistent Deployment & Desktop Integration
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 1 — Backend Foundation | ✅ Complete | FastAPI, Ollama, chat API, logging, tests |
-| 2 — Agent & Tools | ✅ Complete | Tool registry, open_app, battery, browser |
-| 3 — Voice | ✅ Complete | Push-to-talk, STT (faster-whisper), TTS (Kokoro/pyttsx3) |
-| 4 — Companion UI | ✅ Complete | React + Vite, animated avatar, WebSocket state sync |
-| 5 — Memory | ✅ Complete | Short/long-term, episodic, SQLite async storage |
-| 6 — Advanced Agent | ✅ Complete | Multi-step planning, file discovery/org, task reminders |
-| 7 — Fine-Tuning | ✅ Complete | LoRA/QLoRA datasets, validation, training pipeline |
-| 8 — Persistent Deployment | ✅ Complete | systemd user services, auto-start, Hyprland hotkeys |
+NyxAI runs as systemd user services — no root required, auto-starts on login.
 
----
-
-## Persistent Deployment & Desktop Integration (Phase 8)
-
-NyxAI runs as autonomous systemd user services on Arch Linux / EndeavourOS with Hyprland:
-
-### 1. One-Click Install
+### Install
 ```bash
 make service-install
-# Or: ./scripts/install.sh
 ```
 
-### 2. Service Management
+### Service Management
 ```bash
-make service-start    # Start all NyxAI user services
+make service-start    # Start all NyxAI services
 make service-status   # Check unit states and backend health
 make service-logs     # Stream journalctl logs
 make service-stop     # Stop all services
 ```
 
-### 3. Hyprland Keybindings
+### Hyprland Keybindings
 Add to `~/.config/hypr/hyprland.conf`:
 ```ini
-# NyxAI Companion & Voice Keybindings
 bind = SUPER, J, exec, ~/Projects/NyxAI/scripts/run.sh toggle
 bind = SUPER, SPACE, exec, ~/Projects/NyxAI/scripts/run.sh ptt
+```
+
+### Voice Mode
+```bash
+make voice            # Push-to-talk agent mode
+make voice-companion  # Push-to-talk companion mode
+```
+
+---
+
+## Fine-Tuning
+
+NyxAI includes a QLoRA training pipeline to fine-tune `qwen2.5:3b` on custom datasets.
+Designed to run within 6 GB VRAM using 4-bit quantization + gradient checkpointing.
+
+```bash
+python training/scripts/train_lora.py \
+  --model_id Qwen/Qwen2.5-3B-Instruct \
+  --data_path training/datasets/processed/train.jsonl
 ```
 
 ---
 
 ## Configuration
 
-Copy `.env.example` to `.env` and adjust:
+Copy `.env.example` to `.env`:
 
 ```env
-OLLAMA_MODEL=qwen2.5:3b       # Model to use
+OLLAMA_MODEL=qwen2.5:3b
 OLLAMA_BASE_URL=http://localhost:11434
 LOG_LEVEL=INFO
 HOST=127.0.0.1
@@ -224,15 +246,18 @@ PORT=8000
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python, FastAPI, Uvicorn |
-| Validation | Pydantic v2 |
-| LLM Runtime | Ollama |
+| Backend | Python 3.11, FastAPI, Uvicorn |
+| LLM Runtime | Ollama (`qwen2.5:3b`) |
 | HTTP Client | httpx (async) |
+| Validation | Pydantic v2 |
 | Logging | structlog |
+| STT | faster-whisper (CTranslate2, CUDA) |
+| TTS | Kokoro ONNX (EN), pyttsx3/eSpeak (HI/MR) |
+| Memory | aiosqlite + ChromaDB |
+| Fine-Tuning | HuggingFace PEFT, TRL, bitsandbytes |
+| Frontend | React, TypeScript, Vite, Tauri |
 | Testing | pytest, pytest-asyncio |
-| Frontend (future) | React, TypeScript, Vite, Tauri |
-| Database (future) | SQLite → PostgreSQL |
-| Voice (future) | faster-whisper, Kokoro TTS |
+| Deployment | systemd user services |
 
 ---
 

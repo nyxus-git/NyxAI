@@ -3,30 +3,12 @@ api/app/main.py
 
 NyxAI FastAPI application entry point.
 
-This module creates and configures the FastAPI application instance.
-It is the root of the backend system.
+Creates and configures the FastAPI app. The `lifespan` context manager
+handles startup (init DB, LLM, agent, voice, memory) and shutdown
+(graceful HTTP client close). All shared state lives on `app.state`.
 
-How it works:
-  - The `lifespan` context manager runs on startup/shutdown.
-  - On startup: settings are loaded, logging is configured, the LLM
-    provider is initialized, and the ChatService is created. All shared
-    state is stored on `app.state` for injection into route handlers.
-  - On shutdown: the HTTP client is cleanly closed.
-
-Startup order (Phase 5):
-  1. Load settings + configure logging
-  2. Initialize MemoryDatabase (create SQLite schema if needed)
-  3. Initialize MemoryService (all memory layers)
-  4. Initialize OllamaProvider (LLM)
-  5. Initialize NyxAgent + ToolRegistry
-  6. Initialize Voice pipeline (STT + TTS)
-  7. Initialize ChatService (with memory + agent)
-  8. Store all on app.state
-
-Running:
+Run with:
     uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
-
-Or via Makefile:
     make dev
 """
 
@@ -85,18 +67,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Manage application startup and shutdown lifecycle.
 
-    Startup:
-      1. Load settings from environment / .env
-      2. Configure structured logging
-      3. Initialize MemoryDatabase + MemoryService (Phase 5)
-      4. Initialize OllamaProvider (LLM)
-      5. Initialize NyxAgent + ToolRegistry (Phase 2)
-      6. Initialize WhisperTranscriber + NyxTTSSpeaker (Phase 3)
-      7. Initialize ChatService (memory-aware, Phase 5)
-      8. Store all on app.state for dependency access in routers
-
-    Shutdown:
-      1. Close the Ollama HTTP client gracefully
+    Startup: load settings → init memory DB → init LLM → init agent
+             → init voice pipeline → init chat service → store on app.state.
+    Shutdown: cancel background tasks, close HTTP client.
     """
     settings = get_settings()
 
@@ -112,7 +85,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         port=settings.port,
     )
 
-    # Step 2: Initialize Memory System (Phase 5)
+    # Step 2: Initialize memory system
     logger.info(
         "memory_init",
         db_path=settings.memory_db_path,
@@ -161,7 +134,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             hint=f"Run: ollama pull {settings.ollama_model}",
         )
 
-    # Step 5: Build tool registry + NyxAgent (Phase 2)
+    # Step 5: Build tool registry and agent
     logger.info("agent_init", message="Building tool registry and NyxAgent...")
     tool_registry = build_default_registry()
     agent = NyxAgent(
@@ -169,7 +142,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         tool_registry=tool_registry,
     )
 
-    # Step 6: Initialize Voice pipeline (Phase 3)
+    # Step 6: Initialize voice pipeline
     logger.info(
         "voice_init",
         whisper_model=settings.whisper_model,
@@ -213,7 +186,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield  # ← Application runs here
 
-    # ── Shutdown ──────────────────────────────────────────────────────────────
+    # Shutdown
     logger.info("nyxai_shutting_down")
     poller_task.cancel()
     await llm_provider.close()
@@ -241,9 +214,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
-    # Allow all origins during development.
-    # In production (Phase 8), restrict to the Tauri app origin.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -252,21 +222,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(health.router)
     app.include_router(chat.router)
     app.include_router(voice_router.router)
-    app.include_router(memory_router.router)  # Phase 5: Memory API
+    app.include_router(memory_router.router)
 
-    # ── Root redirect ─────────────────────────────────────────────────────────
     @app.get("/", include_in_schema=False)
     async def root() -> RedirectResponse:
-        """Redirect root to API documentation."""
         return RedirectResponse(url="/docs")
 
     return app
 
 
-# The FastAPI application instance.
-# This is what uvicorn imports: `uvicorn api.app.main:app`
 app = create_app()

@@ -13,8 +13,7 @@ Responsibilities:
   - List recent conversations for the memory API
   - Clear individual conversations
 
-This is Phase 5's replacement for the volatile in-memory history.
-In Phase 6+, this module may be extended to support multi-device sync.
+Provides persistent storage across sessions.
 """
 
 from __future__ import annotations

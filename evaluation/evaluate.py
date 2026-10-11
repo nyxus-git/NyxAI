@@ -1,7 +1,7 @@
 """
 evaluation/evaluate.py
 
-NyxAI System Evaluation & Benchmarking Suite (PRD Section 31).
+NyxAI System Evaluation & Benchmarking Suite.
 
 Evaluates:
   1. Tool Selection Accuracy: Did the agent choose the correct tool?
@@ -53,7 +53,7 @@ class TestCase:
     description: str = ""
 
 
-# Standardized Benchmark Dataset (PRD Sections 23 & 31)
+# Standardized Benchmark Dataset
 BENCHMARK_DATASET: list[TestCase] = [
     # ── English Cases ──
     TestCase(
@@ -357,7 +357,7 @@ class NyxEvaluator:
         lines = [
             "# NyxAI System Evaluation Benchmark Report",
             "",
-            "## Summary Metrics (PRD Section 31)",
+            "## Summary Metrics",
             "",
             f"- **Total Test Cases**: {summary.total_cases}",
             f"- **Tool Selection Accuracy**: {summary.tool_accuracy_pct}%",

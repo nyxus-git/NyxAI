@@ -1,7 +1,7 @@
 """
 tests/test_memory.py
 
-Unit and integration tests for the NyxAI Phase 5 Memory System.
+Unit and integration tests for the NyxAI Memory System.
 
 Tests cover:
   - MemoryDatabase schema initialization
@@ -28,7 +28,7 @@ from core.memory.long_term import LongTermMemory
 from core.memory.short_term import ShortTermMemory
 
 
-# ─── Fixtures ─────────────────────────────────────────────────────────────────
+# Fixtures
 
 @pytest_asyncio.fixture
 async def memory_db(tmp_path) -> MemoryDatabase:
@@ -74,7 +74,7 @@ async def memory_service(memory_db: MemoryDatabase) -> MemoryService:
     return svc
 
 
-# ─── MemoryDatabase Tests ─────────────────────────────────────────────────────
+# MemoryDatabase Tests
 
 class TestMemoryDatabase:
     @pytest.mark.asyncio
@@ -123,7 +123,7 @@ class TestMemoryDatabase:
         assert row["value"] == 1
 
 
-# ─── ShortTermMemory Tests ────────────────────────────────────────────────────
+# ShortTermMemory Tests
 
 class TestShortTermMemory:
     @pytest.mark.asyncio
@@ -215,7 +215,7 @@ class TestShortTermMemory:
         await short_term.ensure_conversation(conv_id, mode="agent")  # Should not raise
 
 
-# ─── LongTermMemory Tests ─────────────────────────────────────────────────────
+# LongTermMemory Tests
 
 class TestLongTermMemory:
     @pytest.mark.asyncio
@@ -295,7 +295,7 @@ class TestLongTermMemory:
         assert mem["content"] == "Updated content"
 
 
-# ─── EpisodicMemory Tests ─────────────────────────────────────────────────────
+# EpisodicMemory Tests
 
 class TestEpisodicMemory:
     @pytest.mark.asyncio
@@ -383,7 +383,7 @@ class TestEpisodicMemory:
         assert "Searched YouTube" in summary
 
 
-# ─── MemoryService Aggregator Tests ───────────────────────────────────────────
+# MemoryService Aggregator Tests
 
 class TestMemoryService:
     @pytest.mark.asyncio
@@ -444,7 +444,7 @@ class TestMemoryService:
         assert len(events) == 1
 
 
-# ─── Integration Test ─────────────────────────────────────────────────────────
+# Integration Test
 
 class TestMemoryIntegration:
     @pytest.mark.asyncio

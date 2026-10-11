@@ -1,7 +1,7 @@
 /**
- * App.tsx — NyxAI Companion UI (Phase 5)
+ * App.tsx — NyxAI Companion UI
  *
- * Main application layout integrating all Phase 4 + Phase 5 components:
+ * Main application layout:
  *   - Avatar with state animation
  *   - Chat feed
  *   - Voice controls + VoiceVisualizer
@@ -40,19 +40,16 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
       <Header
         mode={mode}
         setMode={setMode}
         isBackendConnected={isConnected}
       />
 
-      {/* ── Status Bar ──────────────────────────────────────────────────── */}
       <div className="status-bar">
         <StatusIndicator isConnected={isConnected} apiBaseUrl={API_BASE} />
       </div>
 
-      {/* ── Panel Navigation Tabs ───────────────────────────────────────── */}
       <nav className="panel-tabs" aria-label="View navigation">
         {(['chat', 'memory', 'conversations'] as PanelView[]).map((panel) => (
           <button
@@ -69,7 +66,6 @@ export const App: React.FC = () => {
         ))}
       </nav>
 
-      {/* ── Main Content ────────────────────────────────────────────────── */}
       <main className="main-content">
         {activePanel === 'chat' ? (
           <>
@@ -90,7 +86,6 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* ── Voice Controls (always visible) ─────────────────────────────── */}
       {activePanel === 'chat' && (
         <Controls
           onSendMessage={sendTextMessage}

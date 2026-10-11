@@ -1,11 +1,11 @@
 """
 api/app/services/chat_service.py
 
-Chat orchestration service for NyxAI — Phase 5 (Memory-Aware).
+Chat orchestration service for NyxAI (Memory-Aware).
 
 This service sits between the API router and the LLM/Agent layer.
 It is responsible for:
-  - Managing PERSISTENT conversation history via MemoryService (Phase 5)
+  - Managing PERSISTENT conversation history via MemoryService 
   - Routing requests to the correct handler based on mode:
       * mode="companion" → direct LLM call
       * mode="agent"     → NyxAgent tool-calling loop
@@ -13,7 +13,7 @@ It is responsible for:
   - Auto-recording tool executions as episodic events
   - Building the message list (system prompt + memory context + history + new message)
 
-Phase 5 changes from Phase 1/2:
+
   - Replaced in-memory defaultdict with ShortTermMemory (SQLite-backed)
   - Added MemoryService injection for long-term + episodic + semantic memory
   - Memory context is appended to the system prompt on each request
@@ -115,7 +115,7 @@ class ChatService:
             mode=mode.value,
         )
 
-        # ── Route to the correct handler ─────────────────────────────────────
+        # ── Route to the correct handler
         if mode == AgentMode.AGENT and self._agent is not None:
             response_text, tool_used, tool_result = await self._handle_agent(
                 message=message,
@@ -278,7 +278,7 @@ class ChatService:
         Compatibility shim — returns empty list.
 
         Use memory_service.short_term.get_history() for async history access.
-        Kept for API backwards compatibility during the Phase 5 transition.
+        Kept for backwards compatibility.
 
         Args:
             conversation_id: Ignored.

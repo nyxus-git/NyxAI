@@ -14,7 +14,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-# ─── Long-Term Memory Schemas ─────────────────────────────────────────────────
+# Long-Term Memory Schemas
 
 class AddMemoryRequest(BaseModel):
     """Request body for POST /memory/long-term."""
@@ -70,7 +70,7 @@ class DeleteMemoryResponse(BaseModel):
     message: str = Field(default="Memory deleted.")
 
 
-# ─── Conversation Schemas ─────────────────────────────────────────────────────
+# Conversation Schemas
 
 class ConversationSummary(BaseModel):
     """Summary of a stored conversation session."""
@@ -120,7 +120,7 @@ class ClearConversationResponse(BaseModel):
     message: str = "Conversation history cleared."
 
 
-# ─── Episodic Memory Schemas ──────────────────────────────────────────────────
+# Episodic Memory Schemas
 
 class EpisodicEvent(BaseModel):
     """A single episodic memory event."""
@@ -140,7 +140,7 @@ class EpisodicListResponse(BaseModel):
     total: int
 
 
-# ─── Memory Status Schema ─────────────────────────────────────────────────────
+# Memory Status Schema
 
 class MemoryStatusResponse(BaseModel):
     """Response body for GET /memory/status."""

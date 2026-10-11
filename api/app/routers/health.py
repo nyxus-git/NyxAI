@@ -12,8 +12,8 @@ Returns the current status of the NyxAI backend including:
 
 This endpoint is used by:
   - Developers during local testing
-  - systemd service health checks (Phase 8)
-  - Frontend connection validation (Phase 4)
+  - systemd service health checks 
+  - Frontend connection validation 
 """
 
 from fastapi import APIRouter, Request

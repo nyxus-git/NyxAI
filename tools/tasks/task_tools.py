@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 DB_PATH = "./data/nyx_memory.db"
 
 
-# ─── Tool Definitions ─────────────────────────────────────────────────────────
+# Tool Definitions
 
 ADD_TASK_DEF = ToolDefinition(
     name="add_task",
@@ -86,7 +86,7 @@ SET_REMINDER_DEF = ToolDefinition(
 )
 
 
-# ─── Tool Implementations ─────────────────────────────────────────────────────
+# Tool Implementations
 
 async def add_task(title: str) -> ToolResult:
     """Add a new task."""

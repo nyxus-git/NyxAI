@@ -2,9 +2,6 @@
 api/app/schemas/chat.py
 
 Pydantic schemas for the /chat endpoint.
-
-Phase 1: Basic message + conversation_id
-Phase 2: Added 'mode' field (companion/agent) and tool metadata in response
 """
 
 from typing import Any, Literal

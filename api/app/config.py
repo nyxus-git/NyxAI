@@ -40,16 +40,16 @@ class Settings(BaseSettings):
         extra="ignore",  # Ignore unknown env vars gracefully
     )
 
-    # ─── Application ──────────────────────────────────────────────────────────
+    # App
     app_name: str = Field(default="NyxAI", description="Application display name")
     app_version: str = Field(default="0.1.0", description="Application version string")
     log_level: str = Field(default="INFO", description="Logging level: DEBUG, INFO, WARNING, ERROR")
 
-    # ─── API Server ───────────────────────────────────────────────────────────
+    # Server
     host: str = Field(default="127.0.0.1", description="API server bind host")
     port: int = Field(default=8000, description="API server bind port")
 
-    # ─── Ollama LLM ───────────────────────────────────────────────────────────
+    # Ollama / LLM
     ollama_base_url: str = Field(
         default="http://localhost:11434",
         description="Ollama server base URL",
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
         description="Ollama HTTP request timeout in seconds",
     )
 
-    # ─── Conversation ─────────────────────────────────────────────────────────
+    # Conversation
     max_conversation_tokens: int = Field(
         default=4096,
         description="Maximum tokens to send in conversation context window",
@@ -76,7 +76,7 @@ class Settings(BaseSettings):
         description="Default response language. 'auto' matches the user's language.",
     )
 
-    # ─── Voice / STT (Phase 3) ────────────────────────────────────────────────
+    # STT (Speech-to-Text)
     whisper_model: str = Field(
         default="small",
         description="Whisper model size: tiny, base, small, medium, large-v3. Default: small.",
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
         description="STT language hint: 'auto' for detection, or 'en', 'hi', 'mr' to force.",
     )
 
-    # ─── Voice / TTS (Phase 3) ────────────────────────────────────────────────
+    # TTS (Text-to-Speech)
     tts_engine: str = Field(
         default="kokoro",
         description="TTS engine: 'kokoro' (English, high quality) or 'pyttsx3' (multilingual fallback).",
@@ -108,7 +108,7 @@ class Settings(BaseSettings):
         description="TTS speech speed multiplier. 1.0 = normal, 1.2 = slightly faster.",
     )
 
-    # ─── Audio Recording (Phase 3) ────────────────────────────────────────────
+    # Audio recording
     audio_sample_rate: int = Field(
         default=16000,
         description="Microphone sample rate in Hz. Whisper expects 16000 Hz.",
@@ -118,7 +118,7 @@ class Settings(BaseSettings):
         description="Microphone channels. 1 = mono (required by Whisper).",
     )
 
-    # ─── Memory / Persistence (Phase 5) ──────────────────────────────────────────
+    # Memory / persistence
     memory_db_path: str = Field(
         default="./data/nyx_memory.db",
         description="Path to the SQLite database file for conversation + memory storage.",
@@ -158,7 +158,7 @@ class Settings(BaseSettings):
         ),
     )
 
-    # ─── Validators ───────────────────────────────────────────────────────────
+    # Validators
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:

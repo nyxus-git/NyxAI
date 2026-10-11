@@ -1,7 +1,7 @@
 """
 tests/test_voice.py
 
-Unit tests for the Phase 3 voice pipeline.
+Unit tests for the voice pipeline.
 
 Design notes:
   - These tests do NOT load Whisper or Kokoro models (too slow/heavy for unit tests).
@@ -27,7 +27,7 @@ from voice.tts.speaker import (
 )
 
 
-# ─── TranscriptionResult Tests ────────────────────────────────────────────────
+# TranscriptionResult Tests
 
 
 class TestTranscriptionResult:
@@ -70,7 +70,7 @@ class TestTranscriptionResult:
         assert result.segments[0].end == 1.5
 
 
-# ─── WhisperTranscriber Initialization Tests ─────────────────────────────────
+# WhisperTranscriber Initialization Tests
 
 
 class TestWhisperTranscriberInit:
@@ -109,7 +109,7 @@ class TestWhisperTranscriberInit:
         assert t.get_model_name() == "faster-whisper/medium"
 
 
-# ─── Audio Format Tests ───────────────────────────────────────────────────────
+# Audio Format Tests
 
 
 class TestAudioConversion:
@@ -170,7 +170,7 @@ class TestAudioConversion:
         assert audio_array.dtype == np.float32
 
 
-# ─── TTS Language Routing Tests ───────────────────────────────────────────────
+# TTS Language Routing Tests
 
 
 class TestNyxTTSSpeakerRouting:
@@ -225,7 +225,7 @@ class TestNyxTTSSpeakerRouting:
         assert NyxTTSSpeaker.get_engine_name(speaker) == "nyx-tts-router"
 
 
-# ─── Voice WebSocket Schema Tests ─────────────────────────────────────────────
+# Voice WebSocket Schema Tests
 
 
 class TestVoiceSchemas:
@@ -280,7 +280,7 @@ class TestVoiceSchemas:
         assert msg.mode == "companion"  # Default mode
 
 
-# ─── PushToTalkListener Tests ─────────────────────────────────────────────────
+# PushToTalkListener Tests
 
 
 class TestPushToTalkListener:

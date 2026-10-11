@@ -11,9 +11,9 @@ help:
 	@echo "  make install         Install Python dependencies"
 	@echo "  make dev             Start FastAPI dev server (auto-reload)"
 	@echo "  make voice           Start push-to-talk voice chat CLI (agent mode)"
-	@echo "  make test            Run full test suite (all phases)"
+	@echo "  make test            Run full test suite"
 	@echo "  make test-cov        Run tests with coverage report"
-	@echo "  make evaluate        Run PRD Section 31 system benchmark suite"
+	@echo "  make evaluate        Run system benchmark suite"
 	@echo "  make pull-model      Pull the default Ollama model"
 	@echo "  make service-install Install systemd user services & build UI"
 	@echo "  make service-start   Start all NyxAI systemd user services"
@@ -41,7 +41,7 @@ install:
 dev:
 	.venv/bin/uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
 
-# ─── Run tests (all phases) ───────────────────────────────────────────────────
+# ─── Run tests ─────────────────────────────────────────────────────────────────
 test:
 	.venv/bin/pytest api/tests/ tests/ -v --tb=short
 
@@ -51,7 +51,7 @@ test-all: test
 test-cov:
 	.venv/bin/pytest api/tests/ tests/ -v --tb=short --cov=api --cov=core --cov=voice --cov=tools --cov=safety --cov-report=term-missing
 
-# ─── Evaluation benchmark suite (PRD Section 31) ───────────────────────────────
+# ─── Evaluation benchmark suite ───────────────────────────────────────────────
 evaluate:
 	$(PYTHON) evaluation/evaluate.py --mock
 
@@ -63,13 +63,13 @@ voice:
 voice-companion:
 	$(PYTHON) scripts/voice_chat.py --mode companion
 
-# ─── Companion Web UI (Phase 4) ────────────────────────────────────────────────
+# ─── Companion Web UI ──────────────────────────────────────────────────────────
 ui:
 	cd apps/companion && npm install && npm run dev
 
 companion-ui: ui
 
-# ─── Persistent Deployment (Phase 8) ───────────────────────────────────────────
+# ─── Persistent Deployment ─────────────────────────────────────────────────────
 service-install:
 	./scripts/install.sh
 

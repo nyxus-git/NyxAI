@@ -1,7 +1,7 @@
 """
 tests/test_deployment.py
 
-Unit tests for Phase 8 Persistent Deployment & System Integration.
+Unit tests for persistent deployment & system integration.
 
 Tests:
   - Systemd user service unit definitions (syntax, directives, restart policy)

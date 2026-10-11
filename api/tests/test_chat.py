@@ -24,7 +24,7 @@ from core.brain.llm import LLMConnectionError, LLMModelError, LLMTimeoutError
 class TestChatEndpoint:
     """Test suite for POST /chat."""
 
-    # ── Basic functionality ────────────────────────────────────────────────────
+    # Basic functionality
 
     def test_chat_returns_200(self, test_client: TestClient) -> None:
         """A valid chat request should return HTTP 200."""
@@ -70,7 +70,7 @@ class TestChatEndpoint:
 
         assert id1 != id2
 
-    # ── Conversation continuity ────────────────────────────────────────────────
+    # Conversation continuity
 
     def test_chat_continues_conversation_with_same_id(
         self, test_client: TestClient, sample_conversation_id: uuid.UUID
@@ -94,7 +94,7 @@ class TestChatEndpoint:
 
         assert data["model"] == "test-model"  # Matches MockLLMProvider default
 
-    # ── Multilingual support ───────────────────────────────────────────────────
+    # Multilingual support
 
     def test_chat_accepts_hindi_message(self, test_client: TestClient) -> None:
         """Hindi messages should be accepted without validation errors."""
@@ -113,7 +113,7 @@ class TestChatEndpoint:
         )
         assert response.status_code == 200
 
-    # ── Input validation ──────────────────────────────────────────────────────
+    # Input validation
 
     def test_chat_rejects_empty_message(self, test_client: TestClient) -> None:
         """An empty message should return HTTP 422 (validation error)."""
@@ -140,7 +140,7 @@ class TestChatEndpoint:
         )
         assert response.status_code == 200
 
-    # ── LLM error handling ────────────────────────────────────────────────────
+    # LLM error handling
 
     def test_chat_returns_503_when_ollama_connection_error(
         self, test_client: TestClient, mock_llm: MockLLMProvider

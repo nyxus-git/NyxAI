@@ -22,7 +22,7 @@ from core.logging import get_logger
 logger = get_logger(__name__)
 
 
-# ─── Tool Definitions ─────────────────────────────────────────────────────────
+# Tool Definitions
 
 OPEN_URL_DEF = ToolDefinition(
     name="open_url",
@@ -82,7 +82,7 @@ WEB_SEARCH_DEF = ToolDefinition(
 )
 
 
-# ─── Tool Implementations ─────────────────────────────────────────────────────
+# Tool Implementations
 
 # DuckDuckGo is used as the default search engine for privacy reasons.
 _SEARCH_BASE_URL = "https://duckduckgo.com/?q={query}"

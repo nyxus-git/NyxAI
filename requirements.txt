@@ -1,24 +1,24 @@
-# ─── Web Framework ────────────────────────────────────────────────────────────
+# Web Framework
 fastapi[standard]>=0.115.0
 uvicorn[standard]>=0.30.0
 
-# ─── Data Validation & Settings ───────────────────────────────────────────────
+# Data Validation & Settings
 pydantic>=2.7.0
 pydantic-settings>=2.3.0
 
-# ─── HTTP Client (Ollama REST API calls) ──────────────────────────────────────
+# HTTP Client (Ollama REST API calls)
 httpx>=0.27.0
 
-# ─── Environment Variables ────────────────────────────────────────────────────
+# Environment Variables
 python-dotenv>=1.0.0
 
-# ─── Structured Logging ───────────────────────────────────────────────────────
+# Structured Logging
 structlog>=24.2.0
 
-# ─── System Metrics (Agent Tools — Phase 2) ───────────────────────────────────
+# System Metrics
 psutil>=6.0.0
 
-# ─── Voice Pipeline (Phase 3) ─────────────────────────────────────────────────
+# Voice Pipeline
 faster-whisper>=1.1.0   # STT: CTranslate2 Whisper (CUDA-accelerated)
 sounddevice>=0.5.0      # Mic input + speaker output (PulseAudio/PipeWire)
 soundfile>=0.12.0       # WAV/audio file read/write
@@ -27,11 +27,11 @@ kokoro-onnx>=0.4.0      # TTS: English, high quality, MIT licensed, ONNX CPU
 pyttsx3>=2.90           # TTS fallback: Hindi/Marathi via eSpeak-NG (offline)
 websockets>=13.0        # WebSocket support for /voice endpoint
 
-# ─── Memory / Persistence (Phase 5) ──────────────────────────────────────────
+# Memory / Persistence
 aiosqlite>=0.20.0        # Async SQLite driver for conversation + memory persistence
 chromadb>=0.5.0          # Local vector store for semantic memory retrieval
 
-# ─── Fine-Tuning (Phase 7) ────────────────────────────────────────────────────
+# Fine-Tuning
 transformers>=4.40.0     # Base HF models and training
 peft>=0.11.0             # Parameter-Efficient Fine-Tuning (LoRA)
 trl>=0.9.0               # Transformer Reinforcement Learning (SFTTrainer)
@@ -39,9 +39,8 @@ bitsandbytes>=0.43.0     # 4-bit quantization for QLoRA
 accelerate>=0.30.0       # Memory-efficient model loading
 datasets>=2.19.0         # Dataset management
 
-# ─── Testing ──────────────────────────────────────────────────────────────────
+# Testing & Utilities
 pytest>=8.2.0
 pytest-asyncio>=0.23.0
 anyio>=4.4.0
-httpx>=0.27.0
-beautifulsoup4>=4.12.3      # Web scraping for Phase 6
+beautifulsoup4>=4.12.3

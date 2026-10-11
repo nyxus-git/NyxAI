@@ -22,7 +22,7 @@ from core.logging import get_logger
 logger = get_logger(__name__)
 
 
-# ─── Tool Definitions ─────────────────────────────────────────────────────────
+# Tool Definitions
 
 LIST_DIRECTORY_DEF = ToolDefinition(
     name="list_directory",
@@ -126,7 +126,7 @@ DELETE_FILE_DEF = ToolDefinition(
     category="files",
 )
 
-# ─── Tool Implementations ─────────────────────────────────────────────────────
+# Tool Implementations
 
 def list_directory(path: str) -> ToolResult:
     """List contents of a directory."""

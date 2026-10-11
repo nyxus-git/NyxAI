@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 # DB path hardcoded for now, same as task_tools.py
 DB_PATH = "./data/nyx_memory.db"
 
-# ─── Tool Definitions ─────────────────────────────────────────────────────────
+# Tool Definitions
 
 CREATE_PLAN_DEF = ToolDefinition(
     name="create_plan",
@@ -62,7 +62,7 @@ UPDATE_PLAN_DEF = ToolDefinition(
 )
 
 
-# ─── Tool Implementations ─────────────────────────────────────────────────────
+# Tool Implementations
 
 async def create_plan(conversation_id: str, content: str) -> ToolResult:
     """Create a new plan."""

@@ -1,7 +1,7 @@
 """
 avatar/components/lip_sync.py
 
-NyxAI Lip Synchronization Engine (PRD Section 18).
+NyxAI Lip Synchronization Engine.
 
 Calculates real-time mouth opening values and visemes from audio amplitude:
 Audio Amplitude (RMS) -> Attack/Decay Smoothing -> Normalized Mouth Open (0.0 to 1.0) -> Viseme Classification.

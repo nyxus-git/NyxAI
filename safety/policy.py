@@ -18,12 +18,12 @@ Design note:
 
 from safety.permissions import PermissionLevel
 
-# ─── Tool Policy Registry ─────────────────────────────────────────────────────
+# Tool Policy Registry
 # Maps tool name (str) → PermissionLevel
 # This is the authoritative source — the agent enforces it.
 
 TOOL_POLICY: dict[str, PermissionLevel] = {
-    # ── System Info Tools (Phase 2) — Read-only, safe to auto-execute ──────────
+    # ── System Info Tools  — Read-only, safe to auto-execute
     "get_battery_status": PermissionLevel.SAFE,
     "get_cpu_usage": PermissionLevel.SAFE,
     "get_ram_usage": PermissionLevel.SAFE,
@@ -31,14 +31,14 @@ TOOL_POLICY: dict[str, PermissionLevel] = {
     "get_system_info": PermissionLevel.SAFE,
     "get_gpu_status": PermissionLevel.SAFE,
 
-    # ── Application Tools (Phase 2) — External effects, need approval ──────────
+    # ── Application Tools  — External effects, need approval
     "open_application": PermissionLevel.CONFIRMATION,
 
-    # ── Browser Tools (Phase 2) — Opens external URLs, need approval ───────────
+    # ── Browser Tools  — Opens external URLs, need approval
     "open_url": PermissionLevel.CONFIRMATION,
     "web_search": PermissionLevel.CONFIRMATION,
 
-    # ── Blocked forever ────────────────────────────────────────────────────────
+    # ── Blocked forever
     # Shell execution is NEVER exposed to the LLM directly.
     "run_shell_command": PermissionLevel.BLOCKED,
     "execute_python": PermissionLevel.BLOCKED,

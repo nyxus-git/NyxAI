@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-# ─── Data Models ──────────────────────────────────────────────────────────────
+# Data Models
 
 
 @dataclass
@@ -80,7 +80,7 @@ class TranscriptionResult:
         return not self.text.strip()
 
 
-# ─── Abstract Provider ────────────────────────────────────────────────────────
+# Abstract Provider
 
 
 class STTProvider(ABC):
@@ -126,7 +126,7 @@ class STTProvider(ABC):
         ...
 
 
-# ─── Whisper Implementation ───────────────────────────────────────────────────
+# Whisper Implementation
 
 
 class WhisperTranscriber(STTProvider):

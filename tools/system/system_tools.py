@@ -29,7 +29,7 @@ from core.logging import get_logger
 logger = get_logger(__name__)
 
 
-# ─── Tool Definitions ─────────────────────────────────────────────────────────
+# Tool Definitions
 # These ToolDefinition objects are imported by the tool_registry.
 
 GET_BATTERY_DEF = ToolDefinition(
@@ -94,7 +94,7 @@ GET_GPU_DEF = ToolDefinition(
 )
 
 
-# ─── Tool Implementations ─────────────────────────────────────────────────────
+# Tool Implementations
 
 
 def get_battery_status() -> ToolResult:

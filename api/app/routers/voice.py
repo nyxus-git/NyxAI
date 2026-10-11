@@ -19,7 +19,7 @@ This endpoint enables real-time voice conversation:
 Avatar state machine events:
   idle → [user sends audio] → thinking → speaking → idle
 
-This WebSocket protocol is designed for the Companion UI (Phase 4).
+This WebSocket protocol is designed for the Companion UI .
 """
 
 import asyncio
@@ -100,12 +100,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
 
             msg_type = message.get("type", "")
 
-            # ── Ping / keep-alive ─────────────────────────────────────────────
+            # ── Ping / keep-alive
             if msg_type == "ping":
                 await _send(websocket, {"type": "pong"})
                 continue
 
-            # ── Audio message — main pipeline ─────────────────────────────────
+            # ── Audio message — main pipeline
             if msg_type != "audio":
                 await _send(
                     websocket,
@@ -148,7 +148,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 mode=mode_str,
             )
 
-            # ── Step 1: Transcribe ─────────────────────────────────────────────
+            # ── Step 1: Transcribe
             try:
                 if transcriber is None:
                     raise RuntimeError("STT transcriber not initialized. Check server startup.")
@@ -194,7 +194,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 ).model_dump(),
             )
 
-            # ── Step 2: Think (LLM/Agent) ──────────────────────────────────────
+            # ── Step 2: Think (LLM/Agent)
             await _send(websocket, VoiceThinkingMessage().model_dump())
 
             try:
@@ -215,7 +215,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 await _send(websocket, VoiceIdleMessage().model_dump())
                 continue
 
-            # ── Step 3: Synthesize response audio ─────────────────────────
+            # ── Step 3: Synthesize response audio
             try:
                 if tts_speaker is None:
                     raise RuntimeError("TTS speaker not initialized. Check server startup.")
@@ -237,7 +237,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 # Send response text even if TTS fails — graceful degradation
                 audio_out_b64 = ""
 
-            # ── Step 4: Send response ──────────────────────────────────────────
+            # ── Step 4: Send response
             await _send(
                 websocket,
                 VoiceResponseMessage(

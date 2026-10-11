@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass
 
 
-# ─── Result Type ──────────────────────────────────────────────────────────────
+# Result Type
 
 
 @dataclass
@@ -45,7 +45,7 @@ class ValidationResult:
         return cls(ok=False, reason=reason)
 
 
-# ─── Shell Injection Blocklist ────────────────────────────────────────────────
+# Shell Injection Blocklist
 # These characters/patterns are dangerous in shell contexts.
 # If any argument contains these, reject the tool call.
 
@@ -58,14 +58,14 @@ _SHELL_INJECTION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# ─── URL Validation ───────────────────────────────────────────────────────────
+# URL Validation
 _URL_PATTERN = re.compile(
     r"^https?://"              # Must start with http:// or https://
     r"[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+"  # Valid URL characters
     r"$"
 )
 
-# ─── Application Name Allowlist ───────────────────────────────────────────────
+# Application Name Allowlist
 # Only allow known, safe application names. This prevents "rm -rf /" being
 # passed as an application name to xdg-open or similar.
 _ALLOWED_APPLICATIONS: set[str] = {
@@ -97,7 +97,7 @@ _MAX_QUERY_LENGTH = 256
 _MAX_URL_LENGTH = 2048
 
 
-# ─── Main Validator ───────────────────────────────────────────────────────────
+# Main Validator
 
 
 class CommandValidator:

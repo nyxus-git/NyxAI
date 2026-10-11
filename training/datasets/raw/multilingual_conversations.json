@@ -76,8 +76,8 @@
     "assistant": "{\"tool\": \"web_search\", \"arguments\": {\"query\": \"Linux Hyprland shortcuts\"}}"
   },
   {
-    "user": "Create a task to review NyxAI PRD.",
-    "assistant": "{\"tool\": \"add_task\", \"arguments\": {\"title\": \"Review NyxAI PRD\"}}"
+    "user": "Create a task to review project architecture.",
+    "assistant": "{\"tool\": \"add_task\", \"arguments\": {\"title\": \"Review project architecture\"}}"
   },
   {
     "user": "एक नया काम जोड़ो: किराना सामान लाना है।",

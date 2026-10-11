@@ -1,7 +1,7 @@
 """
 api/app/routers/memory.py
 
-NyxAI Memory API router — Phase 5.
+NyxAI Memory API router.
 
 Provides REST endpoints for user-facing memory management:
   - View, add, and delete long-term memories
@@ -57,7 +57,7 @@ def _get_memory_service(request: Request) -> MemoryService:
     return service
 
 
-# ─── Status ───────────────────────────────────────────────────────────────────
+# Status
 
 @router.get("/status", response_model=MemoryStatusResponse, summary="Memory system status")
 async def get_memory_status(request: Request) -> MemoryStatusResponse:
@@ -85,7 +85,7 @@ async def get_memory_status(request: Request) -> MemoryStatusResponse:
     )
 
 
-# ─── Long-Term Memories ───────────────────────────────────────────────────────
+# Long-Term Memories
 
 @router.get(
     "/long-term",
@@ -176,7 +176,7 @@ async def delete_long_term_memory(
     )
 
 
-# ─── Conversations ────────────────────────────────────────────────────────────
+# Conversations
 
 @router.get(
     "/conversations",
@@ -282,7 +282,7 @@ async def clear_conversation(
     )
 
 
-# ─── Episodic Memory ──────────────────────────────────────────────────────────
+# Episodic Memory
 
 @router.get(
     "/episodic",

@@ -1,7 +1,7 @@
 """
 tests/test_tools.py
 
-Unit tests for Phase 2 tool system.
+Unit tests for the tool execution and safety system.
 
 Tests:
   - System tools return correct data structure
@@ -19,7 +19,7 @@ from safety.permissions import PermissionLevel, can_auto_execute, is_allowed
 from safety.policy import get_permission_level
 
 
-# ─── ToolDefinition Tests ─────────────────────────────────────────────────────
+# ToolDefinition Tests
 
 
 class TestToolDefinition:
@@ -77,7 +77,7 @@ class TestToolDefinition:
         assert "optional_arg" not in required
 
 
-# ─── Permission Level Tests ───────────────────────────────────────────────────
+# Permission Level Tests
 
 
 class TestPermissions:
@@ -105,7 +105,7 @@ class TestPermissions:
         assert is_allowed(PermissionLevel.CONFIRMATION) is True
 
 
-# ─── Policy Tests ─────────────────────────────────────────────────────────────
+# Policy Tests
 
 
 class TestPolicy:
@@ -144,7 +144,7 @@ class TestPolicy:
         assert get_permission_level("delete_all_files") == PermissionLevel.BLOCKED
 
 
-# ─── CommandValidator Tests ───────────────────────────────────────────────────
+# CommandValidator Tests
 
 
 class TestCommandValidator:
@@ -153,7 +153,7 @@ class TestCommandValidator:
     def setup_method(self):
         self.validator = CommandValidator()
 
-    # ── String injection tests ─────────────────────────────────────────────────
+    # String injection tests
 
     def test_clean_string_passes(self):
         result = self.validator.validate_tool_args(
@@ -193,7 +193,7 @@ class TestCommandValidator:
         assert result.ok is False
         assert "too long" in result.reason.lower()
 
-    # ── Application validation tests ───────────────────────────────────────────
+    # Application validation tests
 
     def test_allowed_app_passes(self):
         result = self.validator.validate_tool_args(
@@ -225,7 +225,7 @@ class TestCommandValidator:
         )
         assert result.ok is False
 
-    # ── URL validation tests ───────────────────────────────────────────────────
+    # URL validation tests
 
     def test_valid_url_passes(self):
         result = self.validator.validate_tool_args(
@@ -251,7 +251,7 @@ class TestCommandValidator:
         )
         assert result.ok is False
 
-    # ── Search validation tests ────────────────────────────────────────────────
+    # Search validation tests
 
     def test_valid_search_passes(self):
         result = self.validator.validate_tool_args(
@@ -266,7 +266,7 @@ class TestCommandValidator:
         assert result.ok is False
 
 
-# ─── System Tools Tests ───────────────────────────────────────────────────────
+# System Tools Tests
 
 
 class TestSystemTools:
@@ -314,7 +314,7 @@ class TestSystemTools:
         assert len(content) > 0
 
 
-# ─── ToolRegistry Tests ───────────────────────────────────────────────────────
+# ToolRegistry Tests
 
 
 class TestToolRegistry:

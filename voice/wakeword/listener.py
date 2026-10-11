@@ -6,7 +6,7 @@ Push-to-talk microphone listener for NyxAI.
 Records audio from the microphone while the user holds a key,
 then returns the audio bytes when they release.
 
-In Phase 3, push-to-talk uses simple Enter key press:
+Push-to-talk recording flow:
   1. User presses Enter → recording starts
   2. User presses Enter again → recording stops
   3. Audio bytes are returned to the voice pipeline

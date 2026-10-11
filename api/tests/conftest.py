@@ -25,7 +25,7 @@ from api.app.services.chat_service import ChatService
 from core.brain.llm import LLMProvider, LLMResponse, Message
 
 
-# ─── Mock LLM Provider ────────────────────────────────────────────────────────
+# Mock LLM Provider
 
 
 class MockLLMProvider(LLMProvider):
@@ -111,7 +111,7 @@ class MockLLMProvider(LLMProvider):
         )
 
 
-# ─── Test App Factory ─────────────────────────────────────────────────────────
+# Test App Factory
 
 
 def make_test_app(mock_provider: MockLLMProvider) -> FastAPI:
@@ -158,7 +158,7 @@ def make_test_app(mock_provider: MockLLMProvider) -> FastAPI:
     return app
 
 
-# ─── Fixtures ─────────────────────────────────────────────────────────────────
+# Fixtures
 
 
 @pytest.fixture

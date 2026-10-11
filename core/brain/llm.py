@@ -10,7 +10,7 @@ on a specific LLM implementation — only on this contract.
 Swapping the LLM provider requires zero changes to the API layer,
 agent layer, or any other consumer of this interface.
 
-Phase 2 additions:
+
   - LLMResponseWithTools: Carries both text content and tool call decisions
   - chat_with_tools(): Abstract method for LLM-native tool calling
 """
@@ -244,7 +244,7 @@ class LLMProvider(ABC):
         ...
 
 
-# ─── Provider Exceptions ───────────────────────────────────────────────────────
+# Provider Exceptions
 
 
 class LLMError(Exception):

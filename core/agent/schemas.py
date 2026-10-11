@@ -30,7 +30,7 @@ class AgentMode(str, Enum):
     AGENT = "agent"          # Tool-enabled agentic mode
 
 
-# ─── Tool Definition ──────────────────────────────────────────────────────────
+# Tool Definition
 
 
 @dataclass
@@ -125,7 +125,7 @@ class ToolDefinition:
         }
 
 
-# ─── Tool Call & Result ───────────────────────────────────────────────────────
+# Tool Call & Result
 
 
 @dataclass
@@ -176,7 +176,7 @@ class ToolResult:
         return f"Tool '{self.tool_name}' failed: {self.error}"
 
 
-# ─── Agent Response ───────────────────────────────────────────────────────────
+# Agent Response
 
 
 @dataclass

@@ -587,7 +587,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Phase 5: Status Bar & Indicator ──────────────────────────────────────── */
+/* Status Bar & Indicator */
 
 .status-bar {
   padding: 4px 16px;
@@ -626,7 +626,7 @@ body {
   color: var(--text-muted);
 }
 
-/* ── Phase 5: Panel Navigation Tabs ──────────────────────────────────────── */
+/* Panel Navigation Tabs */
 
 .panel-tabs {
   display: flex;
@@ -660,7 +660,7 @@ body {
   border: 1px solid rgba(0, 242, 254, 0.15);
 }
 
-/* ── Phase 5: Voice Visualizer ───────────────────────────────────────────── */
+/* Voice Visualizer */
 
 .voice-visualizer {
   display: flex;
@@ -685,7 +685,7 @@ body {
   box-shadow: 0 0 6px rgba(0, 242, 254, 0.4);
 }
 
-/* ── Phase 5: Memory & Conversation Panels ───────────────────────────────── */
+/* Memory & Conversation Panels */
 
 .memory-panel {
   display: flex;
