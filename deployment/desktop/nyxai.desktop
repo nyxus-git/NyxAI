@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NyxAI
+GenericName=AI Companion & Desktop Agent
+Comment=Local-first AI companion and desktop assistant for Linux
+Exec=/home/nyyxus-preditor/Projects/NyxAI/scripts/run.sh toggle
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;Development;ArtificialIntelligence;
+StartupWMClass=nyxai-companion
+Keywords=ai;assistant;companion;agent;nyx;
