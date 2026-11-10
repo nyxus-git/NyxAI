@@ -1,25 +1,11 @@
-/**
- * components/Conversation.tsx
- *
- * Conversation history sidebar panel.
- * Lists recent conversations with message counts and timestamps.
- * Clicking a conversation could be used to restore it (future feature).
- */
-
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, Clock, Trash2, ChevronRight } from 'lucide-react';
-
-interface ConversationSummary {
-  id: string;
-  mode: string;
-  title: string | null;
-  created_at: string;
-  updated_at: string;
-  message_count: number;
-}
+import { MessageSquare, Clock, Trash2, ArrowUpRight } from 'lucide-react';
+import { API_BASE, deleteConversation, fetchConversations } from '../services/api';
+import { ConversationSummary } from '../types/companion';
 
 interface ConversationProps {
   apiBaseUrl?: string;
+  onSelectConversation?: (id: string) => void;
   onClose?: () => void;
 }
 
@@ -38,38 +24,34 @@ function formatRelativeTime(isoString: string): string {
 }
 
 export const Conversation: React.FC<ConversationProps> = ({
-  apiBaseUrl = 'http://localhost:8000',
+  apiBaseUrl = API_BASE,
+  onSelectConversation,
   onClose,
 }) => {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchConversations = async () => {
+  const loadList = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/memory/conversations?limit=30`);
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data.conversations);
-      }
-    } catch {
-      // silently ignore
+      const list = await fetchConversations(30);
+      setConversations(list);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchConversations();
+    loadList();
   }, [apiBaseUrl]);
 
-  const handleClear = async (id: string) => {
-    if (!confirm('Clear this conversation history?')) return;
+  const handleClear = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     setDeletingId(id);
     try {
-      await fetch(`${apiBaseUrl}/memory/conversations/${id}`, { method: 'DELETE' });
-      await fetchConversations();
+      await deleteConversation(id);
+      await loadList();
     } finally {
       setDeletingId(null);
     }
@@ -80,10 +62,10 @@ export const Conversation: React.FC<ConversationProps> = ({
       <div className="memory-panel-header">
         <div className="memory-panel-title">
           <MessageSquare className="w-4 h-4" />
-          <span>Conversations</span>
+          <span>History</span>
         </div>
         {onClose && (
-          <button className="panel-close-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="panel-close-btn" onClick={onClose} aria-label="Close">
             ×
           </button>
         )}
@@ -100,29 +82,39 @@ export const Conversation: React.FC<ConversationProps> = ({
         ) : (
           <ul className="conversation-list">
             {conversations.map((conv) => (
-              <li key={conv.id} className="conversation-item">
+              <li
+                key={conv.id}
+                className="conversation-item clickable"
+                onClick={() => onSelectConversation?.(conv.id)}
+              >
                 <div className="conversation-info">
                   <div className="conversation-title">
-                    {conv.title || `${conv.mode === 'agent' ? '🤖' : '💬'} Session`}
+                    {conv.title || `${conv.mode === 'agent' ? 'Agent' : 'Companion'} Session`}
                   </div>
                   <div className="conversation-meta">
                     <Clock className="w-3 h-3" />
                     <span>{formatRelativeTime(conv.updated_at)}</span>
                     <span>·</span>
-                    <span>{conv.message_count} messages</span>
+                    <span>{conv.message_count} msgs</span>
                     <span>·</span>
                     <span className={`conv-mode-badge ${conv.mode}`}>{conv.mode}</span>
                   </div>
                 </div>
-                <button
-                  className="memory-delete-btn"
-                  onClick={() => handleClear(conv.id)}
-                  disabled={deletingId === conv.id}
-                  aria-label="Clear conversation"
-                  title="Clear conversation history"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="conversation-actions">
+                  {onSelectConversation && (
+                    <ArrowUpRight className="w-3.5 h-3.5 text-cyan-400 opacity-70" />
+                  )}
+                  <button
+                    type="button"
+                    className="memory-delete-btn"
+                    onClick={(e) => handleClear(e, conv.id)}
+                    disabled={deletingId === conv.id}
+                    aria-label="Clear conversation"
+                    title="Delete conversation history"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

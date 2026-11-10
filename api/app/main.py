@@ -14,18 +14,22 @@ Run with:
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import AsyncGenerator
 import aiosqlite
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from api.app.config import get_settings
+from api.app.routers import avatar as avatar_router
 from api.app.routers import chat, health
 from api.app.routers import memory as memory_router
 from api.app.routers import voice as voice_router
+from api.app.services.avatar_service import ensure_avatar_assets_dir
 from api.app.services.chat_service import ChatService
 from core.agent.agent import NyxAgent
 from core.agent.tool_registry import build_default_registry
@@ -226,9 +230,45 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(voice_router.router)
     app.include_router(memory_router.router)
+    app.include_router(avatar_router.router)
+
+    # Serve uploaded/custom avatar assets
+    avatar_assets_dir = ensure_avatar_assets_dir()
+    app.mount(
+        "/avatar/assets",
+        StaticFiles(directory=str(avatar_assets_dir)),
+        name="avatar-assets",
+    )
+
+    # Serve built Companion UI when available (enables 1-server desktop app mode)
+    project_root = Path(__file__).resolve().parents[2]
+    ui_dist_dir = project_root / "apps" / "companion" / "dist"
+    ui_index_file = ui_dist_dir / "index.html"
+
+    if (ui_dist_dir / "assets").is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(ui_dist_dir / "assets")),
+            name="ui-assets",
+        )
+    if (ui_dist_dir / "mediapipe").is_dir():
+        app.mount(
+            "/mediapipe",
+            StaticFiles(directory=str(ui_dist_dir / "mediapipe")),
+            name="ui-mediapipe",
+        )
 
     @app.get("/", include_in_schema=False)
-    async def root() -> RedirectResponse:
+    async def root():
+        if ui_index_file.is_file():
+            return FileResponse(ui_index_file)
+        return RedirectResponse(url="/docs")
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def favicon():
+        fav = ui_dist_dir / "favicon.svg"
+        if fav.is_file():
+            return FileResponse(fav)
         return RedirectResponse(url="/docs")
 
     return app

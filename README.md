@@ -2,19 +2,20 @@
 
 > Local-first AI companion and intelligent desktop agent for Linux.
 
-NyxAI is a privacy-focused, fully local AI system built for Linux (Arch/EndeavourOS + Hyprland).
-It combines conversational AI, voice interaction, desktop automation, and long-term memory —
+NyxAI is a privacy-focused, fully local AI desktop application built for Arch / EndeavourOS (KDE Plasma, GNOME, XFCE, Hyprland) and any Linux distro.
+It combines conversational AI, an animated girl companion (from your photo, 3D `.vrm`/`.glb`, or stylized avatar), voice interaction, desktop automation, and long-term memory —
 running entirely on your hardware with no cloud dependency.
 
 ---
 
 ## What NyxAI Can Do
 
-- 🗣️ **Multilingual voice chat** — English, Hindi, Marathi, Hinglish — speak naturally, get a spoken response
+- 👧 **Animated Girl Companion** — upload any portrait photo (60 FPS eye blinking & lip-sync), load a 3D `.vrm`/`.glb` model, or use the stylized companion
+- 🖥️ **Dedicated Linux Desktop App** — native PyQt6 WebEngine window + System Tray + Application Menu launcher across KDE Plasma, GNOME, XFCE, and Wayland/X11
+- 🗣️ **Multilingual voice chat** — English, Hindi, Marathi, Hinglish — speak naturally, get a spoken response with synchronized mouth animation
 - 🤖 **Desktop agent** — open apps, search the web, manage files, check system stats, set task reminders
 - 🧠 **4-layer memory** — remembers facts about you across all sessions (short-term, long-term, episodic, semantic)
 - 🔒 **Privacy-first** — everything runs locally, nothing leaves your machine
-- ⚡ **Push-to-talk** — `Super+Space` to speak, `Super+J` to toggle the companion UI
 - 🎛️ **Fine-tunable** — LoRA/QLoRA training pipeline included for personalizing the model
 
 ---
@@ -52,24 +53,20 @@ OLLAMA_MODEL=llama3.2:3b make dev
 - [Ollama](https://ollama.ai) installed and running
 - Python 3.11+
 
-### Setup
+### One-Command Setup (Arch / EndeavourOS / Any Linux)
 
 ```bash
 git clone https://github.com/nyxus-git/NyxAI.git
 cd NyxAI
 
-# Create virtualenv and install all dependencies
-make setup
+# Installs system deps, .venv, Ollama + qwen2.5:3b model, builds UI & installs Desktop App
+./scripts/install.sh
 
-# Pull the default model (one-time, ~2 GB)
-make pull-model
-
-# Copy config
-cp .env.example .env
-
-# Start the backend
-make dev
+# Launch the dedicated NyxAI desktop application (or open "NyxAI" from your App Menu)
+nyxai
 ```
+
+To use your own photo of a girl (or a 3D `.vrm`/`.glb` character), click **Upload Girl Photo** inside the app's top bar.
 
 ### Test It
 
@@ -255,7 +252,7 @@ PORT=8000
 | TTS | Kokoro ONNX (EN), pyttsx3/eSpeak (HI/MR) |
 | Memory | aiosqlite + ChromaDB |
 | Fine-Tuning | HuggingFace PEFT, TRL, bitsandbytes |
-| Frontend | React, TypeScript, Vite, Tauri |
+| Frontend | React, TypeScript, Vite, Three.js (`three-vrm`), MediaPipe, PyQt6-WebEngine |
 | Testing | pytest, pytest-asyncio |
 | Deployment | systemd user services |
 

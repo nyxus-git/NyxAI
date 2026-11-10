@@ -42,11 +42,14 @@ nyxai.db
 *.sqlite
 data/
 logs/
+avatar/assets/custom_*
+avatar/assets/avatar_config.json
 
 # Node / Frontend
 node_modules/
 dist/
 .next/
+apps/companion/public/mediapipe/
 
 # Internal docs (PRD, roadmap, planning)
 docs/

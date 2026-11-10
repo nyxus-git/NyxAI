@@ -1,21 +1,15 @@
-/**
- * components/VoiceVisualizer.tsx
- *
- * Animated audio waveform displayed during voice recording.
- * Uses CSS animations driven by React state — no canvas/WebAudio needed.
- * Shows an idle flat line when not recording, and animated bars when active.
- */
-
 import React, { useEffect, useRef, useState } from 'react';
 
 interface VoiceVisualizerProps {
   isRecording: boolean;
+  micLevelRef?: React.MutableRefObject<number>;
   barCount?: number;
 }
 
 export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   isRecording,
-  barCount = 20,
+  micLevelRef,
+  barCount = 24,
 }) => {
   const [heights, setHeights] = useState<number[]>(Array(barCount).fill(4));
   const animFrameRef = useRef<number | null>(null);
@@ -27,15 +21,17 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       return;
     }
 
-    const animate = () => {
+    const animate = (now: number) => {
+      const level = micLevelRef ? micLevelRef.current : 0.35;
+      const t = now * 0.01;
       setHeights(
         Array.from({ length: barCount }, (_, i) => {
-          // Center bars are taller — gives a natural voice waveform shape
           const center = barCount / 2;
           const distFromCenter = Math.abs(i - center) / center;
-          const base = 8 + (1 - distFromCenter) * 20;
-          const noise = (Math.random() - 0.5) * 24;
-          return Math.max(4, Math.min(40, base + noise));
+          const envelope = 1 - distFromCenter * 0.65;
+          const ripple = Math.sin(t + i * 0.6) * 0.35 + 0.65;
+          const h = 4 + (8 + level * 34) * envelope * ripple;
+          return Math.max(4, Math.min(42, h));
         })
       );
       animFrameRef.current = requestAnimationFrame(animate);
@@ -45,7 +41,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isRecording, barCount]);
+  }, [isRecording, barCount, micLevelRef]);
 
   return (
     <div className="voice-visualizer" aria-hidden="true">
@@ -53,10 +49,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         <div
           key={i}
           className={`voice-bar ${isRecording ? 'active' : ''}`}
-          style={{
-            height: `${h}px`,
-            transition: isRecording ? 'height 80ms ease' : 'height 300ms ease',
-          }}
+          style={{ height: `${h}px` }}
         />
       ))}
     </div>

@@ -29,6 +29,7 @@ class VoiceAudioMessage(BaseModel):
     data: str  # Base64-encoded WAV bytes
     mode: Literal["companion", "agent"] = "companion"
     conversation_id: str | None = None
+    voice: str | None = None
 
 
 class VoicePingMessage(BaseModel):
@@ -58,6 +59,8 @@ class VoiceResponseMessage(BaseModel):
     type: Literal["response"] = "response"
     text: str                    # NyxAI's text response
     audio: str                   # Base64-encoded WAV audio bytes
+    visemes: list[dict[str, Any]] = []
+    emotion: str = "idle"
     tool_used: str | None = None
     tool_result: dict[str, Any] | None = None
     conversation_id: str | None = None

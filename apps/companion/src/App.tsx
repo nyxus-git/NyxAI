@@ -1,96 +1,195 @@
-/**
- * App.tsx — NyxAI Companion UI
- *
- * Main application layout:
- *   - Avatar with state animation
- *   - Chat feed
- *   - Voice controls + VoiceVisualizer
- *   - Panel navigation: Chat | Memory | Conversations
- *   - StatusIndicator in header
- *   - MemoryPanel + Conversation sidebar
- */
-
-import React, { useState } from 'react';
-import { Header } from './components/Header';
-import { Avatar } from './components/Avatar';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, X } from 'lucide-react';
+import { AvatarStage } from './components/avatar/AvatarStage';
+import { CharacterModal } from './components/CharacterModal';
 import { ChatFeed } from './components/ChatFeed';
 import { Controls } from './components/Controls';
-import { VoiceVisualizer } from './components/VoiceVisualizer';
-import { StatusIndicator } from './components/StatusIndicator';
-import { MemoryPanel } from './components/MemoryPanel';
 import { Conversation } from './components/Conversation';
+import { Header } from './components/Header';
+import { MemoryPanel } from './components/MemoryPanel';
+import { StatusIndicator } from './components/StatusIndicator';
+import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { useVoiceWebSocket } from './hooks/useVoiceWebSocket';
+import { API_BASE, fetchAvatarConfig, fetchHealth } from './services/api';
+import { AvatarConfig } from './types/companion';
+import { DEFAULT_AVATAR_LANDMARKS } from './utils/faceLandmarks';
 
-type PanelView = 'chat' | 'memory' | 'conversations';
+type DrawerTab = 'chat' | 'memory' | 'conversations';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const INITIAL_CONFIG: AvatarConfig = {
+  mode: 'stylized',
+  name: 'Nyx',
+  tagline: 'Local Desktop AI Companion',
+  voice: 'af_heart',
+  photo_url: null,
+  model_url: null,
+  landmarks: DEFAULT_AVATAR_LANDMARKS,
+};
 
 export const App: React.FC = () => {
   const [mode, setMode] = useState<'companion' | 'agent'>('agent');
-  const [activePanel, setActivePanel] = useState<PanelView>('chat');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<DrawerTab>('chat');
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [handsFree, setHandsFree] = useState(true);
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(INITIAL_CONFIG);
+  const [modelName, setModelName] = useState<string>('qwen2.5:3b');
+  const [ollamaConnected, setOllamaConnected] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetchAvatarConfig()
+      .then((cfg) => setAvatarConfig(cfg))
+      .catch(() => undefined);
+
+    const pollHealth = async () => {
+      const info = await fetchHealth();
+      if (info) {
+        setModelName(info.model);
+        setOllamaConnected(info.ollama_connected);
+      }
+    };
+    pollHealth();
+    const timer = window.setInterval(pollHealth, 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const {
     avatarState,
     messages,
+    liveSubtitle,
     isRecording,
     isConnected,
+    errorBanner,
+    micLevelRef,
+    lipSync,
     toggleRecording,
     sendTextMessage,
-  } = useVoiceWebSocket(mode);
+    replayMessageAudio,
+    startNewConversation,
+    loadConversation,
+    clearError,
+  } = useVoiceWebSocket({
+    mode,
+    voice: avatarConfig.voice,
+    muted,
+    handsFree,
+  });
+
+  const handleSelectConversation = async (id: string) => {
+    await loadConversation(id);
+    setActiveTab('chat');
+    setDrawerOpen(true);
+  };
 
   return (
     <div className="app-container">
       <Header
+        companionName={avatarConfig.name}
         mode={mode}
         setMode={setMode}
         isBackendConnected={isConnected}
+        ollamaConnected={ollamaConnected}
+        drawerOpen={drawerOpen}
+        onToggleDrawer={() => setDrawerOpen((v) => !v)}
+        onOpenCustomize={() => setCustomizeOpen(true)}
       />
 
-      <div className="status-bar">
-        <StatusIndicator isConnected={isConnected} apiBaseUrl={API_BASE} />
-      </div>
-
-      <nav className="panel-tabs" aria-label="View navigation">
-        {(['chat', 'memory', 'conversations'] as PanelView[]).map((panel) => (
-          <button
-            key={panel}
-            id={`panel-tab-${panel}`}
-            className={`panel-tab ${activePanel === panel ? 'active' : ''}`}
-            onClick={() => setActivePanel(panel)}
-            aria-selected={activePanel === panel}
-          >
-            {panel === 'chat' && '💬 Chat'}
-            {panel === 'memory' && '🧠 Memory'}
-            {panel === 'conversations' && '📚 History'}
+      {errorBanner && (
+        <div className="error-toast" role="alert">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorBanner}</span>
+          <button type="button" onClick={clearError} aria-label="Dismiss error">
+            <X className="w-3.5 h-3.5" />
           </button>
-        ))}
-      </nav>
+        </div>
+      )}
 
-      <main className="main-content">
-        {activePanel === 'chat' ? (
-          <>
-            <Avatar state={avatarState} />
-            {isRecording && <VoiceVisualizer isRecording={isRecording} />}
-            <ChatFeed messages={messages} />
-          </>
-        ) : activePanel === 'memory' ? (
-          <MemoryPanel
-            apiBaseUrl={API_BASE}
-            onClose={() => setActivePanel('chat')}
+      <main className={`workspace-grid ${drawerOpen ? 'with-drawer' : 'spotlight'}`}>
+        <div className="stage-column">
+          <AvatarStage
+            config={avatarConfig}
+            state={avatarState}
+            liveSubtitle={liveSubtitle}
+            modelName={modelName}
+            mouthOpenRef={lipSync.mouthOpenRef}
+            visemeRef={lipSync.visemeRef}
+            audioEnergyRef={lipSync.audioEnergyRef}
+            onOpenCustomize={() => setCustomizeOpen(true)}
           />
-        ) : (
-          <Conversation
-            apiBaseUrl={API_BASE}
-            onClose={() => setActivePanel('chat')}
+
+          {isRecording && (
+            <div className="recording-visualizer-float">
+              <VoiceVisualizer isRecording={isRecording} micLevelRef={micLevelRef} />
+            </div>
+          )}
+
+          <Controls
+            companionName={avatarConfig.name}
+            onSendMessage={sendTextMessage}
+            isRecording={isRecording}
+            onToggleRecording={toggleRecording}
+            muted={muted}
+            onToggleMute={() => setMuted((m) => !m)}
+            handsFree={handsFree}
+            onToggleHandsFree={() => setHandsFree((h) => !h)}
+            showQuickPrompts={messages.length === 0}
           />
+        </div>
+
+        {drawerOpen && (
+          <aside className="side-drawer" aria-label="Conversation and memory panel">
+            <div className="drawer-status-strip">
+              <StatusIndicator isConnected={isConnected} apiBaseUrl={API_BASE} />
+            </div>
+
+            <nav className="panel-tabs" aria-label="Panel tabs">
+              {(
+                [
+                  { id: 'chat', label: 'Chat' },
+                  { id: 'memory', label: 'Memory' },
+                  { id: 'conversations', label: 'History' },
+                ] as { id: DrawerTab; label: string }[]
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  id={`panel-tab-${tab.id}`}
+                  className={`panel-tab ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-selected={activeTab === tab.id}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="drawer-content">
+              {activeTab === 'chat' ? (
+                <ChatFeed
+                  companionName={avatarConfig.name}
+                  messages={messages}
+                  onReplayAudio={replayMessageAudio}
+                  onNewChat={startNewConversation}
+                />
+              ) : activeTab === 'memory' ? (
+                <MemoryPanel apiBaseUrl={API_BASE} />
+              ) : (
+                <Conversation
+                  apiBaseUrl={API_BASE}
+                  onSelectConversation={handleSelectConversation}
+                />
+              )}
+            </div>
+          </aside>
         )}
       </main>
 
-      {activePanel === 'chat' && (
-        <Controls
-          onSendMessage={sendTextMessage}
-          isRecording={isRecording}
-          onToggleRecording={toggleRecording}
+      {customizeOpen && (
+        <CharacterModal
+          config={avatarConfig}
+          onConfigChange={setAvatarConfig}
+          onClose={() => setCustomizeOpen(false)}
         />
       )}
     </div>

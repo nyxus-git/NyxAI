@@ -52,13 +52,14 @@ class TTSProvider(ABC):
     """
 
     @abstractmethod
-    def synthesize(self, text: str, language: str = "en") -> bytes:
+    def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
         """
         Convert text to speech and return WAV audio bytes.
 
         Args:
             text: The text to synthesize.
             language: Language code ('en', 'hi', 'mr', etc.).
+            voice: Optional voice ID override.
 
         Returns:
             WAV audio as bytes (16-bit PCM, 24kHz or 22kHz depending on engine).
@@ -162,13 +163,14 @@ class KokoroSpeaker(TTSProvider):
                 self._fallback = Pyttsx3Speaker()
                 self._kokoro = None
 
-    def synthesize(self, text: str, language: str = "en") -> bytes:
+    def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
         """
         Synthesize text to WAV bytes using Kokoro.
 
         Args:
             text: Text to synthesize (English recommended for best quality).
             language: Language code (Kokoro works best with 'en').
+            voice: Optional Kokoro voice ID override.
 
         Returns:
             WAV audio bytes (24kHz, 16-bit, mono).
@@ -181,7 +183,8 @@ class KokoroSpeaker(TTSProvider):
         if not text.strip():
             return b""
 
-        logger.debug("kokoro_synthesizing", text_preview=text[:60], voice=self._voice)
+        selected_voice = voice or self._voice
+        logger.debug("kokoro_synthesizing", text_preview=text[:60], voice=selected_voice)
 
         try:
             if self._kokoro is None:
@@ -190,7 +193,7 @@ class KokoroSpeaker(TTSProvider):
             # Kokoro returns: (audio_samples: np.ndarray[float32], sample_rate: int)
             samples, sample_rate = self._kokoro.create(
                 text,
-                voice=self._voice,
+                voice=selected_voice,
                 speed=self._speed,
                 lang="en-us",
             )
@@ -307,7 +310,7 @@ class Pyttsx3Speaker(TTSProvider):
         }
         return candidates.get(language, ["en-us"])
 
-    def synthesize(self, text: str, language: str = "hi") -> bytes:
+    def synthesize(self, text: str, language: str = "hi", voice: str | None = None) -> bytes:
         """
         Synthesize text to WAV bytes using pyttsx3.
 
@@ -472,13 +475,14 @@ class NyxTTSSpeaker(TTSProvider):
             return self._pyttsx3
         return self._kokoro
 
-    def synthesize(self, text: str, language: str = "en") -> bytes:
+    def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
         """
         Synthesize text to WAV bytes, routing to the best engine for the language.
 
         Args:
             text: Text to synthesize.
             language: Language code from Whisper detection ('en', 'hi', 'mr', etc.).
+            voice: Optional voice ID override (used for Kokoro).
 
         Returns:
             WAV audio bytes.
@@ -488,8 +492,9 @@ class NyxTTSSpeaker(TTSProvider):
             "nyx_tts_routing",
             language=language,
             engine=provider.get_engine_name(),
+            voice=voice,
         )
-        return provider.synthesize(text, language=language)
+        return provider.synthesize(text, language=language, voice=voice)
 
     def speak(self, text: str, language: str = "en") -> None:
         """

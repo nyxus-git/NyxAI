@@ -76,13 +76,49 @@ def find_hyprland_window() -> dict[str, Any] | None:
     return None
 
 
+def launch_desktop_app(action: str = "toggle") -> bool:
+    """
+    Launch or toggle the dedicated PyQt6-WebEngine desktop app window.
+    Works across KDE Plasma, GNOME, XFCE, Hyprland, and any Wayland/X11 DE.
+    """
+    desktop_script = PROJECT_ROOT / "apps" / "desktop" / "desktop_app.py"
+    if not desktop_script.exists():
+        return False
+
+    python_bin = PROJECT_ROOT / ".venv" / "bin" / "python"
+    executable = str(python_bin) if python_bin.exists() else sys.executable
+
+    try:
+        # Check whether PyQt6-WebEngine is importable before spawning
+        check = subprocess.run(
+            [executable, "-c", "import PyQt6.QtWebEngineWidgets"],
+            capture_output=True,
+            timeout=5,
+        )
+        if check.returncode != 0:
+            return False
+
+        subprocess.Popen(
+            [executable, str(desktop_script), "--action", action],
+            cwd=str(PROJECT_ROOT),
+            start_new_session=True,
+        )
+        return True
+    except Exception as e:
+        logger.warning("desktop_app_launch_failed", error=str(e))
+        return False
+
+
 def toggle_ui() -> bool:
     """
     Toggle or focus the NyxAI Companion UI.
-    If the window exists in Hyprland, focuses it. If already focused, toggles workspace.
-    If not running, launches it in application mode.
+    Prefers the dedicated PyQt6 desktop app on all Linux DEs (KDE, GNOME, XFCE, Hyprland).
+    Falls back to Hyprland window toggling or browser app mode if PyQt6 is unavailable.
     """
     logger.info("toggle_ui_requested")
+
+    if launch_desktop_app(action="toggle"):
+        return True
 
     if is_hyprland():
         window = find_hyprland_window()
@@ -171,7 +207,7 @@ async def run_ptt() -> None:
                 json={"message": result.text, "mode": "agent"},
             )
             chat_data = chat_resp.json()
-            reply = chat_data.get("reply", "")
+            reply = chat_data.get("response") or chat_data.get("reply", "")
             print(f"\nNyxAI: {reply}\n")
 
             # Speak response with correct language routing

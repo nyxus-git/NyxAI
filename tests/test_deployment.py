@@ -82,6 +82,24 @@ class TestDeploymentScripts:
         assert "start" in res.stdout
         assert "stop" in res.stdout
 
+    def test_install_script_syntax(self):
+        """install.sh must pass bash syntax check and expose --help."""
+        syntax = subprocess.run(
+            ["bash", "-n", str(SCRIPTS_DIR / "install.sh")],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        assert syntax.returncode == 0, syntax.stderr
+        help_res = subprocess.run(
+            [str(SCRIPTS_DIR / "install.sh"), "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        assert help_res.returncode == 0
+        assert "NyxAI Linux Installer" in help_res.stdout
+
 
 class TestDesktopController:
     """Validate apps/desktop/main.py behavior."""

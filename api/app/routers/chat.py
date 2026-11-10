@@ -20,7 +20,11 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from api.app.schemas.chat import ChatRequest, ChatResponse
+from api.app.schemas.chat import ChatRequest, ChatResponse, VisemeFrameSchema
+from api.app.services.avatar_service import (
+    detect_response_emotion,
+    synthesize_speech_with_visemes,
+)
 from core.agent.schemas import AgentMode
 from core.brain.llm import LLMConnectionError, LLMModelError, LLMTimeoutError
 from core.logging import get_logger
@@ -128,23 +132,24 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         ) from e
 
     audio_b64 = None
+    visemes_raw: list[dict] = []
     if body.tts:
         tts_speaker = getattr(request.app.state, "tts_speaker", None)
         if tts_speaker:
             try:
-                import asyncio
-                import base64
-                from core.brain.language import detect_response_language
-                loop = asyncio.get_event_loop()
-                response_lang = detect_response_language(response_text)
-                audio_bytes = await loop.run_in_executor(
-                    None,
-                    lambda: tts_speaker.synthesize(response_text, language=response_lang),
+                audio_b64, visemes_raw = await synthesize_speech_with_visemes(
+                    tts_speaker=tts_speaker,
+                    text=response_text,
+                    voice=body.voice,
                 )
-                if audio_bytes:
-                    audio_b64 = base64.b64encode(audio_bytes).decode()
             except Exception as e:
                 logger.warning("chat_tts_synthesis_failed", error=str(e))
+
+    emotion = detect_response_emotion(
+        response_text,
+        tool_used=tool_used,
+        tool_result=tool_result,
+    )
 
     return ChatResponse(
         response=response_text,
@@ -154,4 +159,6 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         tool_used=tool_used,
         tool_result=tool_result,
         audio=audio_b64,
+        visemes=[VisemeFrameSchema(**frame) for frame in visemes_raw],
+        emotion=emotion,
     )

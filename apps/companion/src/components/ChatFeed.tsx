@@ -1,21 +1,37 @@
-import React from 'react';
-import { Battery, Cpu, HardDrive, Terminal, Search, CheckCircle, Clock } from 'lucide-react';
-
-export interface ChatMessage {
-  id: string;
-  sender: 'user' | 'assistant';
-  text: string;
-  toolUsed?: string | null;
-  toolResult?: any;
-  timestamp: string;
-}
+import React, { useEffect, useRef } from 'react';
+import {
+  Battery,
+  Cpu,
+  HardDrive,
+  Terminal,
+  Search,
+  CheckCircle,
+  Clock,
+  Volume2,
+  PlusCircle,
+} from 'lucide-react';
+import { ChatMessage } from '../types/companion';
 
 interface ChatFeedProps {
+  companionName: string;
   messages: ChatMessage[];
+  onReplayAudio?: (msg: ChatMessage) => void;
+  onNewChat?: () => void;
 }
 
-export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
-  const renderToolCard = (toolUsed: string, toolResult: any) => {
+export const ChatFeed: React.FC<ChatFeedProps> = ({
+  companionName,
+  messages,
+  onReplayAudio,
+  onNewChat,
+}) => {
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  const renderToolCard = (toolUsed: string, toolResult: Record<string, unknown> | null | undefined) => {
     if (!toolResult) return null;
 
     if (toolUsed === 'get_battery_status') {
@@ -25,7 +41,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
             <Battery className="w-4 h-4" />
             <span>Battery Status</span>
           </div>
-          <div>Level: {toolResult.percent}% ({toolResult.status})</div>
+          <div>
+            Level: {String(toolResult.percent ?? '?')}% ({String(toolResult.status ?? 'Unknown')})
+          </div>
         </div>
       );
     }
@@ -37,7 +55,10 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
             <HardDrive className="w-4 h-4" />
             <span>Memory Usage</span>
           </div>
-          <div>Used: {toolResult.used_gb} GB / {toolResult.total_gb} GB ({toolResult.percent}%)</div>
+          <div>
+            Used: {String(toolResult.used_gb ?? '?')} GB / {String(toolResult.total_gb ?? '?')} GB (
+            {String(toolResult.percent ?? '?')}%)
+          </div>
         </div>
       );
     }
@@ -49,7 +70,9 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
             <Cpu className="w-4 h-4" />
             <span>CPU Usage</span>
           </div>
-          <div>Load: {toolResult.percent}% ({toolResult.core_count} cores)</div>
+          <div>
+            Load: {String(toolResult.percent ?? '?')}% ({String(toolResult.core_count ?? '?')} cores)
+          </div>
         </div>
       );
     }
@@ -61,7 +84,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
             <Terminal className="w-4 h-4" />
             <span>App Launch</span>
           </div>
-          <div>App: {toolResult.application || 'App'} (Pending Approval)</div>
+          <div>App: {String(toolResult.application || 'App')}</div>
         </div>
       );
     }
@@ -73,7 +96,7 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
             <Search className="w-4 h-4" />
             <span>Web Search</span>
           </div>
-          <div>Query: "{toolResult.query}"</div>
+          <div>Query: "{String(toolResult.query ?? '')}"</div>
         </div>
       );
     }
@@ -91,11 +114,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
 
   return (
     <div className="chat-panel">
+      <div className="chat-panel-topbar">
+        <span>Conversation</span>
+        {onNewChat && messages.length > 0 && (
+          <button type="button" className="new-chat-btn" onClick={onNewChat}>
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>New Chat</span>
+          </button>
+        )}
+      </div>
+
       <div className="chat-feed">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center opacity-60 my-auto">
-            <Clock className="w-8 h-8 mb-2 text-cyan-400" />
-            <p>Start a conversation or click the mic to speak to NyxAI.</p>
+          <div className="chat-empty-state">
+            <Clock className="w-8 h-8 mb-2 text-cyan-400 opacity-75" />
+            <p>Ask {companionName} anything by voice or typing below.</p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -104,10 +137,21 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({ messages }) => {
               {msg.toolUsed && renderToolCard(msg.toolUsed, msg.toolResult)}
               <div className="message-meta">
                 <span>{msg.timestamp}</span>
+                {msg.sender === 'assistant' && msg.audio && onReplayAudio && (
+                  <button
+                    type="button"
+                    className="replay-voice-btn"
+                    onClick={() => onReplayAudio(msg)}
+                    title="Replay spoken answer"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           ))
         )}
+        <div ref={bottomRef} />
       </div>
     </div>
   );

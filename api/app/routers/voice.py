@@ -38,6 +38,10 @@ from api.app.schemas.voice import (
     VoiceThinkingMessage,
     VoiceTranscriptMessage,
 )
+from api.app.services.avatar_service import (
+    detect_response_emotion,
+    synthesize_speech_with_visemes,
+)
 from core.agent.schemas import AgentMode
 from core.logging import get_logger
 
@@ -215,45 +219,50 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 await _send(websocket, VoiceIdleMessage().model_dump())
                 continue
 
-            # ── Step 3: Synthesize response audio
+            # ── Step 3: Synthesize response audio & lip-sync visemes
+            audio_out_b64 = ""
+            visemes: list[dict[str, Any]] = []
+            voice_override = message.get("voice")
             try:
                 if tts_speaker is None:
                     raise RuntimeError("TTS speaker not initialized. Check server startup.")
 
-                # Detect the language of the LLM's *response* (not the user's input).
-                # This matters for mixed conversations: user may speak Hinglish but
-                # NyxAI may respond in Devanagari Hindi — TTS must follow the response.
-                from core.brain.language import detect_response_language
-                response_lang = detect_response_language(response_text)
-
-                audio_out = await loop.run_in_executor(
-                    None,
-                    lambda: tts_speaker.synthesize(response_text, language=response_lang),
+                audio_out_b64, visemes = await synthesize_speech_with_visemes(
+                    tts_speaker=tts_speaker,
+                    text=response_text,
+                    voice=voice_override,
                 )
-                audio_out_b64 = base64.b64encode(audio_out).decode()
+                audio_out_b64 = audio_out_b64 or ""
 
             except Exception as e:
                 logger.error("voice_ws_tts_error", client_id=client_id, error=str(e))
                 # Send response text even if TTS fails — graceful degradation
                 audio_out_b64 = ""
 
-            # ── Step 4: Send response
+            emotion = detect_response_emotion(
+                response_text,
+                tool_used=tool_used,
+                tool_result=tool_result,
+            )
+
+            # ── Step 4: Send response (client handles speaking -> idle on audio end)
             await _send(
                 websocket,
                 VoiceResponseMessage(
                     text=response_text,
                     audio=audio_out_b64,
+                    visemes=visemes,
+                    emotion=emotion,
                     tool_used=tool_used,
                     tool_result=tool_result,
                     conversation_id=str(conversation_id) if conversation_id else None,
                 ).model_dump(),
             )
 
-            await _send(websocket, VoiceSpeakingMessage().model_dump())
-
-            # Brief pause to let client start playback before we signal idle
-            await asyncio.sleep(0.3)
-            await _send(websocket, VoiceIdleMessage().model_dump())
+            if audio_out_b64:
+                await _send(websocket, VoiceSpeakingMessage().model_dump())
+            else:
+                await _send(websocket, VoiceIdleMessage().model_dump())
 
             logger.info(
                 "voice_ws_turn_complete",

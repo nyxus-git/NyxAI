@@ -1,6 +1,11 @@
 # Web Framework
 fastapi[standard]>=0.115.0
 uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+
+# Desktop App Shell (Cross-DE Linux: KDE, GNOME, XFCE, Hyprland)
+PyQt6>=6.7.0
+PyQt6-WebEngine>=6.7.0
 
 # Data Validation & Settings
 pydantic>=2.7.0

@@ -1,7 +1,7 @@
-.PHONY: help setup install dev test test-all test-cov evaluate lint clean pull-model voice service-install service-start service-stop service-status service-logs toggle-ui ptt
+.PHONY: help setup install dev app test test-all test-cov evaluate lint clean pull-model voice service-install service-start service-stop service-status service-logs toggle-ui ptt
 
 PYTHON := .venv/bin/python
-PIP    := .venv/bin/pip
+PIP    := .venv/bin/python -m pip
 
 # ─── Default target ────────────────────────────────────────────────────────────
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "NyxAI — Developer Commands"
 	@echo "────────────────────────────────────────"
 	@echo "  make install         Install Python dependencies"
+	@echo "  make app             Launch dedicated NyxAI Desktop App"
 	@echo "  make dev             Start FastAPI dev server (auto-reload)"
 	@echo "  make voice           Start push-to-talk voice chat CLI (agent mode)"
 	@echo "  make test            Run full test suite"
@@ -39,7 +40,11 @@ install:
 
 # ─── Start development server ──────────────────────────────────────────────────
 dev:
-	.venv/bin/uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
+	.venv/bin/python -m uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
+
+# ─── Launch Dedicated Desktop App ──────────────────────────────────────────────
+app:
+	$(PYTHON) apps/desktop/desktop_app.py --action show
 
 # ─── Run tests ─────────────────────────────────────────────────────────────────
 test:

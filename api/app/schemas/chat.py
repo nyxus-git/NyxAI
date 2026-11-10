@@ -37,6 +37,10 @@ class ChatRequest(BaseModel):
         default=True,
         description="Whether to generate TTS audio in response. Default: True.",
     )
+    voice: str | None = Field(
+        default=None,
+        description="Optional TTS voice ID override (e.g., 'af_heart', 'af_bella', 'af_nova').",
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -70,6 +74,14 @@ class ChatRequest(BaseModel):
     }
 
 
+class VisemeFrameSchema(BaseModel):
+    """Timed mouth-opening viseme frame generated from synthesized audio."""
+
+    time_seconds: float
+    mouth_open: float
+    viseme: str
+
+
 class ChatResponse(BaseModel):
     """Response schema for POST /chat."""
 
@@ -101,6 +113,14 @@ class ChatResponse(BaseModel):
     audio: str | None = Field(
         default=None,
         description="Base64-encoded WAV audio of NyxAI's speech response.",
+    )
+    visemes: list[VisemeFrameSchema] = Field(
+        default_factory=list,
+        description="Timed lip-sync frames aligned with the audio output.",
+    )
+    emotion: str = Field(
+        default="idle",
+        description="Suggested avatar emotional state for the response.",
     )
 
     model_config = {

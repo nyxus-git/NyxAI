@@ -33,7 +33,7 @@ interface UseMemoryReturn {
 }
 
 export function useMemory({
-  apiBaseUrl = 'http://localhost:8000',
+  apiBaseUrl = '',
   tag,
 }: UseMemoryOptions = {}): UseMemoryReturn {
   const [memories, setMemories] = useState<MemoryItem[]>([]);

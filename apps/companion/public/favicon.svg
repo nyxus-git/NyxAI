@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="nyxGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#9d4edd" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#0b0f1a" />
+  <rect x="2" y="2" width="60" height="60" rx="16" stroke="url(#nyxGrad)" stroke-width="2.5" opacity="0.85" />
+  <path d="M38 16C28.5 16 21 23.5 21 33C21 42.5 28.5 50 38 50C41.8 50 45.3 48.7 48.1 46.5C41.4 46.2 36 40.7 36 33.9C36 27.1 41.4 21.6 48.1 21.3C45.3 19.1 41.8 16 38 16Z" fill="url(#nyxGrad)" />
+  <circle cx="44" cy="23" r="3" fill="#00f2fe" />
+</svg>
+

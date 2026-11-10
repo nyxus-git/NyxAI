@@ -21,7 +21,7 @@ interface MemoryPanelProps {
 }
 
 export const MemoryPanel: React.FC<MemoryPanelProps> = ({
-  apiBaseUrl = 'http://localhost:8000',
+  apiBaseUrl = '',
   onClose,
 }) => {
   const { memories, loading, error, addMemory, deleteMemory } = useMemory({ apiBaseUrl });

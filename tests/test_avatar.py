@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from avatar.components.lip_sync import LipSyncEngine
-from avatar.components.states import AvatarState, AvatarStateManager
+from avatar.components.states import AvatarState, AvatarStateManager, infer_emotion_from_text
 
 
 class TestAvatarStateManager:
@@ -69,3 +69,23 @@ class TestLipSyncEngine:
         engine = LipSyncEngine()
         frames = engine.process_wav_bytes(b"")
         assert frames == []
+
+
+class TestEmotionInference:
+    """Validate emotion state inference from responses and tool outcomes."""
+
+    def test_error_tool_triggers_concerned(self):
+        state = infer_emotion_from_text(
+            "Done",
+            tool_used="read_file",
+            tool_result={"error": "File not found"},
+        )
+        assert state == AvatarState.CONCERNED
+
+    def test_happy_text_triggers_happy(self):
+        state = infer_emotion_from_text("I'm happy to help you with that! 😊")
+        assert state == AvatarState.HAPPY
+
+    def test_confused_text_triggers_confused(self):
+        state = infer_emotion_from_text("Sorry, I'm not sure what file you meant.")
+        assert state == AvatarState.CONFUSED

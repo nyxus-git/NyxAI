@@ -24,7 +24,7 @@ interface StatusIndicatorProps {
 
 export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   isConnected,
-  apiBaseUrl = 'http://localhost:8000',
+  apiBaseUrl = '',
 }) => {
   const [memStatus, setMemStatus] = useState<MemoryStatus | null>(null);
   const [loading, setLoading] = useState(false);

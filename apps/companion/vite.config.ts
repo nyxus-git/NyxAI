@@ -8,15 +8,23 @@ export default defineConfig({
     host: '127.0.0.1',
     proxy: {
       '/chat': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/memory': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/avatar': {
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
       '/voice': {
-        target: 'ws://localhost:8000',
+        target: 'ws://127.0.0.1:8000',
         ws: true,
       },
     },
