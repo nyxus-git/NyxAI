@@ -83,6 +83,7 @@ async def _run_voice_turn(
         conversation_id=conversation_id,
         mode=agent_mode,
         auto_approve=auto_approve,
+        voice_mode=True,
     )
 
     audio_out_b64 = ""
@@ -312,6 +313,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                     conversation_id=conversation_id,
                     mode=agent_mode,
                     auto_approve=auto_approve,
+                    voice_mode=True,
                 )
             except Exception as e:
                 logger.error("voice_ws_chat_error", client_id=client_id, error=str(e))

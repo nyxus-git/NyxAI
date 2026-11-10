@@ -66,6 +66,32 @@ async def reminder_poller() -> None:
         await asyncio.sleep(30)
 
 
+async def _warmup_pipeline(app: FastAPI) -> None:
+    """Pre-load Ollama, Whisper STT, and Kokoro TTS in the background on startup."""
+    logger = get_logger(__name__)
+    loop = asyncio.get_running_loop()
+    try:
+        llm = getattr(app.state, "llm_provider", None)
+        transcriber = getattr(app.state, "transcriber", None)
+        tts_speaker = getattr(app.state, "tts_speaker", None)
+
+        tasks = []
+        if llm is not None and hasattr(llm, "warmup"):
+            tasks.append(llm.warmup())
+        if transcriber is not None and hasattr(transcriber, "_load_model"):
+            tasks.append(loop.run_in_executor(None, transcriber._load_model))
+        if tts_speaker is not None and hasattr(tts_speaker, "_kokoro"):
+            tasks.append(loop.run_in_executor(None, tts_speaker._kokoro._load_model))
+
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            logger.info("nyxai_warmup_complete")
+    except asyncio.CancelledError:
+        pass
+    except Exception as exc:
+        logger.debug("nyxai_warmup_error", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
@@ -185,13 +211,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("nyxai_ready", message="NyxAI backend is ready to receive requests.")
 
-    # Start background tasks
+    # Start background tasks (reminder poller + non-blocking model warmup)
     poller_task = asyncio.create_task(reminder_poller())
+    warmup_task = asyncio.create_task(_warmup_pipeline(app))
 
     yield  # ← Application runs here
 
     # Shutdown
     logger.info("nyxai_shutting_down")
+    warmup_task.cancel()
     poller_task.cancel()
     await llm_provider.close()
     logger.info("nyxai_stopped")

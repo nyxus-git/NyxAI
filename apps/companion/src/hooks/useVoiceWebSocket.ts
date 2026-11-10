@@ -581,10 +581,10 @@ export function useVoiceWebSocket({
           silenceStartedAt = null;
         } else {
           speechStreakAt = null;
-          if (hadSpeech && elapsed > 600) {
+          if (hadSpeech && elapsed > 450) {
             if (silenceStartedAt === null) {
               silenceStartedAt = now;
-            } else if (now - silenceStartedAt > 950) {
+            } else if (now - silenceStartedAt > 650) {
               stopAndSendCurrentTurn();
             }
           } else if (!hadSpeech && elapsed > 35_000) {

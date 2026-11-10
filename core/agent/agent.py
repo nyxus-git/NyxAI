@@ -112,6 +112,7 @@ class NyxAgent:
         history: list[Message] | None = None,
         conversation_id: str | None = None,
         auto_approve: bool = False,
+        voice_mode: bool = False,
     ) -> AgentResponse:
         """
         Process a user message with full tool-calling capability.
@@ -137,9 +138,10 @@ class NyxAgent:
             history_length=len(history),
         )
 
-        # Build initial message list
-        # [system_prompt + agent_suffix + active_plan] + [history] + [user_message]
-        system_content = get_system_prompt(compact=False) + AGENT_SYSTEM_PROMPT_SUFFIX
+        # Build initial message list (compact prompt in voice mode for lower latency)
+        system_content = get_system_prompt(compact=voice_mode) + AGENT_SYSTEM_PROMPT_SUFFIX
+        if voice_mode:
+            system_content += "\n\n## Voice Mode Speed Rule\nReply concisely in 1-2 short, natural spoken sentences unless detailed explanation is requested."
         
         # Inject active plan if it exists
         if conversation_id:

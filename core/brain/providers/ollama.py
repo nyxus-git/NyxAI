@@ -85,6 +85,18 @@ class OllamaProvider(LLMProvider):
             self._client = None
             logger.info("ollama_provider_closed")
 
+    async def warmup(self) -> None:
+        """Pre-load the Ollama model into VRAM so the first user turn has zero cold-start lag."""
+        try:
+            client = self._get_client()
+            await client.post(
+                "/api/generate",
+                json={"model": self._model, "prompt": "", "keep_alive": "30m"},
+            )
+            logger.info("ollama_warmup_complete", model=self._model)
+        except Exception as exc:
+            logger.debug("ollama_warmup_skipped", error=str(exc))
+
     async def chat(
         self,
         messages: list[Message],
@@ -114,6 +126,7 @@ class OllamaProvider(LLMProvider):
             "model": self._model,
             "messages": [msg.to_dict() for msg in messages],
             "stream": False,
+            "keep_alive": "30m",
             "options": {
                 "temperature": temperature,
             },
@@ -315,6 +328,7 @@ class OllamaProvider(LLMProvider):
             "messages": [msg.to_dict() for msg in messages],
             "tools": tools,
             "stream": False,
+            "keep_alive": "30m",
             "options": {
                 "temperature": temperature,
             },

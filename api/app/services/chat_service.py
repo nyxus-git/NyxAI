@@ -76,6 +76,7 @@ class ChatService:
         conversation_id: uuid.UUID | None = None,
         mode: AgentMode = AgentMode.COMPANION,
         auto_approve: bool = False,
+        voice_mode: bool = False,
     ) -> tuple[str, uuid.UUID, str | None, dict | None]:
         """
         Process a user message and return NyxAI's response.
@@ -122,6 +123,7 @@ class ChatService:
                 message=message,
                 conv_key=conv_key,
                 auto_approve=auto_approve,
+                voice_mode=voice_mode,
             )
         else:
             if mode == AgentMode.AGENT and self._agent is None:
@@ -133,11 +135,12 @@ class ChatService:
             response_text, tool_used, tool_result = await self._handle_companion(
                 message=message,
                 conv_key=conv_key,
+                voice_mode=voice_mode,
             )
 
         return response_text, conversation_id, tool_used, tool_result
 
-    async def _build_system_message(self, query: str) -> Message:
+    async def _build_system_message(self, query: str, voice_mode: bool = False) -> Message:
         """
         Build the system message with long-term memory context injected.
 
@@ -147,11 +150,14 @@ class ChatService:
 
         Args:
             query: Current user message (used for semantic search context).
+            voice_mode: Use compact prompt and concise spoken-response hint when True.
 
         Returns:
             A Message object with role=SYSTEM.
         """
-        base_prompt = get_system_prompt(compact=False)
+        base_prompt = get_system_prompt(compact=voice_mode)
+        if voice_mode:
+            base_prompt += "\nReply concisely in 1-2 short natural spoken sentences unless asked for detail."
         memory_context = await self._memory.build_system_prompt_context(query=query)
 
         if memory_context:
@@ -165,6 +171,7 @@ class ChatService:
         self,
         message: str,
         conv_key: str,
+        voice_mode: bool = False,
     ) -> tuple[str, None, None]:
         """
         Handle a companion mode request — pure LLM conversation, no tools.
@@ -179,7 +186,7 @@ class ChatService:
         history = await self._memory.short_term.get_history(conv_key)
 
         # Build memory-aware system message
-        system_message = await self._build_system_message(query=message)
+        system_message = await self._build_system_message(query=message, voice_mode=voice_mode)
         user_message = Message(role=MessageRole.USER, content=message)
         messages_to_send = [system_message] + history + [user_message]
 
@@ -190,7 +197,10 @@ class ChatService:
             history_length=len(history),
         )
 
-        llm_response = await self._llm.chat(messages_to_send)
+        llm_response = await self._llm.chat(
+            messages_to_send,
+            max_tokens=220 if voice_mode else None,
+        )
 
         # Persist both messages to SQLite
         await self._memory.short_term.save_message(
@@ -219,6 +229,7 @@ class ChatService:
         message: str,
         conv_key: str,
         auto_approve: bool = False,
+        voice_mode: bool = False,
     ) -> tuple[str, str | None, dict | None]:
         """
         Handle an agent mode request — tool-calling agentic loop.
@@ -245,6 +256,7 @@ class ChatService:
             history=history,
             conversation_id=conv_key,
             auto_approve=auto_approve,
+            voice_mode=voice_mode,
         )
 
         # Persist both messages
