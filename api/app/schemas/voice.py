@@ -30,7 +30,7 @@ class VoiceAudioMessage(BaseModel):
     mode: Literal["companion", "agent"] = "companion"
     conversation_id: str | None = None
     voice: str | None = None
-    auto_approve: bool = False
+    auto_approve: bool = True
 
 
 class VoicePingMessage(BaseModel):

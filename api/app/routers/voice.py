@@ -240,7 +240,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
 
             mode_str = message.get("mode", "companion")
             agent_mode = AgentMode(mode_str) if mode_str in ("companion", "agent") else AgentMode.COMPANION
-            auto_approve = bool(message.get("auto_approve", False))
+            auto_approve = bool(message.get("auto_approve", True))
 
             # Use provided conversation_id or maintain across turns
             msg_conv_id = message.get("conversation_id")

@@ -40,7 +40,7 @@ if "QTWEBENGINE_CHROMIUM_FLAGS" not in os.environ:
 from PyQt6.QtCore import QTimer, Qt, QUrl
 from PyQt6.QtGui import QAction, QColor, QIcon
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
+from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import (
     QApplication,
@@ -270,7 +270,7 @@ class NyxDesktopWindow(QMainWindow):
         menu.addAction(top_action)
 
         reload_action = QAction("Reload Interface", self)
-        reload_action.triggered.connect(lambda: self.web_view.setUrl(QUrl(self._app_url)))
+        reload_action.triggered.connect(self.hard_reload)
         menu.addAction(reload_action)
 
         menu.addSeparator()
@@ -308,6 +308,12 @@ class NyxDesktopWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
+    def hard_reload(self) -> None:
+        profile = QWebEngineProfile.defaultProfile()
+        if profile is not None:
+            profile.clearHttpCache()
+        self.web_view.setUrl(QUrl(self._app_url))
+
     def _on_ipc_connection(self) -> None:
         conn = self._ipc_server.nextPendingConnection()
         if not conn:
@@ -316,6 +322,9 @@ class NyxDesktopWindow(QMainWindow):
         cmd = bytes(conn.readAll()).decode("utf-8", errors="ignore").strip()
         conn.disconnectFromServer()
         if cmd == "show":
+            self.show_window()
+        elif cmd == "reload":
+            self.hard_reload()
             self.show_window()
         else:
             self.toggle_visibility()
@@ -348,7 +357,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="NyxAI Dedicated Desktop App")
     parser.add_argument(
         "--action",
-        choices=["show", "toggle"],
+        choices=["show", "toggle", "reload"],
         default="show",
         help="Behavior when another instance is already running.",
     )

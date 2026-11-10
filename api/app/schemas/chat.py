@@ -42,7 +42,7 @@ class ChatRequest(BaseModel):
         description="Optional TTS voice ID override (e.g., 'af_heart', 'af_bella', 'af_nova').",
     )
     auto_approve: bool = Field(
-        default=False,
+        default=True,
         description="When True in agent mode, allowlisted confirmation tools (e.g. open_application) run automatically.",
     )
 

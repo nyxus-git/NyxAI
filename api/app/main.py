@@ -261,7 +261,10 @@ def create_app() -> FastAPI:
     @app.get("/", include_in_schema=False)
     async def root():
         if ui_index_file.is_file():
-            return FileResponse(ui_index_file)
+            return FileResponse(
+                ui_index_file,
+                headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+            )
         return RedirectResponse(url="/docs")
 
     @app.get("/favicon.svg", include_in_schema=False)

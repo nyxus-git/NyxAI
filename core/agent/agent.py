@@ -29,6 +29,7 @@ Design notes:
 
 from __future__ import annotations
 
+import re
 import uuid
 import aiosqlite
 
@@ -184,6 +185,34 @@ class NyxAgent:
 
             # Case 1: LLM responded with text — no tool call needed
             if not llm_response.has_tool_calls:
+                # Guard against small-model hallucination ("I opened X" or "as a text-based AI") when no tool ran
+                if (
+                    tool_used is None
+                    and iterations == 1
+                    and re.search(r"\b(open|launch|start)\b", message, re.IGNORECASE)
+                    and re.search(
+                        r"\b(opened|launched|started|text-based|cannot open|can't open|don't have)\b",
+                        llm_response.content,
+                        re.IGNORECASE,
+                    )
+                ):
+                    logger.warning(
+                        "agent_hallucinated_launch_retrying",
+                        conversation_prefix=conv_id,
+                        content_preview=llm_response.content[:80],
+                    )
+                    messages.append(Message(role=MessageRole.ASSISTANT, content=llm_response.content))
+                    messages.append(
+                        Message(
+                            role=MessageRole.USER,
+                            content=(
+                                "You ARE running in Desktop Agent mode on Linux with the `open_application` tool. "
+                                "Call `open_application` right now to actually launch the requested application."
+                            ),
+                        )
+                    )
+                    continue
+
                 logger.info(
                     "agent_responded_directly",
                     conversation_prefix=conv_id,
