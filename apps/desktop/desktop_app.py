@@ -147,11 +147,20 @@ def send_single_instance_command(command: str = "toggle") -> bool:
 
 
 class NyxWebPage(QWebEnginePage):
-    """WebEnginePage that grants local microphone/audio access cleanly."""
+    """WebEnginePage that grants local microphone/audio access and logs JS errors."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.featurePermissionRequested.connect(self._on_permission_requested)
+
+    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID) -> None:
+        try:
+            logs_dir = PROJECT_ROOT / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            with open(logs_dir / "desktop_app.log", "a", encoding="utf-8") as f:
+                f.write(f"[{level}] {sourceID}:{lineNumber} {message}\n")
+        except Exception:
+            pass
 
     def _on_permission_requested(self, security_origin: QUrl, feature: QWebEnginePage.Feature) -> None:
         host = security_origin.host()

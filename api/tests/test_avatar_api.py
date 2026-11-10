@@ -16,7 +16,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.app.routers import avatar as avatar_router
+from api.app.routers import voice as voice_router
 from api.app.services.avatar_service import AvatarConfig
+from voice.stt.transcriber import TranscriptionResult
 from voice.tts.speaker import _float32_to_wav_bytes
 
 
@@ -123,4 +125,61 @@ class TestChatVisemesAndEmotion:
             "confused",
             "concerned",
         }
+
+
+class TestVoiceAskEndpoint:
+    """Validate HTTP /voice/ask fallback and WebSocket voice pipeline."""
+
+    def test_voice_ask_processes_wav_audio(self, test_client: TestClient) -> None:
+        import base64
+
+        class FakeTranscriber:
+            def transcribe(self, audio_bytes: bytes) -> TranscriptionResult:
+                assert audio_bytes[:4] == b"RIFF"
+                return TranscriptionResult(text="Hello Nyx", language="en", language_probability=0.98)
+
+        class FakeSpeaker:
+            def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
+                t = np.linspace(0, 0.2, 3200, endpoint=False)
+                return _float32_to_wav_bytes((0.3 * np.sin(2 * np.pi * 440 * t)).astype(np.float32), 16000)
+
+        test_client.app.include_router(voice_router.router)  # type: ignore[union-attr]
+        test_client.app.state.transcriber = FakeTranscriber()  # type: ignore[union-attr]
+        test_client.app.state.tts_speaker = FakeSpeaker()  # type: ignore[union-attr]
+
+        fake_wav = _float32_to_wav_bytes(np.zeros(1600, dtype=np.float32), 16000)
+        b64 = base64.b64encode(fake_wav).decode()
+
+        resp = test_client.post("/voice/ask", json={"data": b64, "mode": "companion"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["transcript"] == "Hello Nyx"
+        assert data["text"]
+        assert data["audio"]
+        assert len(data["visemes"]) > 0
+
+    def test_agent_confirm_executes_tool(self, test_client: TestClient, monkeypatch) -> None:
+        import shutil
+        import subprocess
+        from core.agent.tool_registry import ToolRegistry
+        from tools.files.file_tools import OPEN_APPLICATION_DEF, open_application
+
+        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/firefox" if name == "firefox" else None)
+        launched = []
+        monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kw: launched.append(cmd))
+
+        reg = ToolRegistry()
+        reg.register(OPEN_APPLICATION_DEF, open_application)
+        test_client.app.state.tool_registry = reg  # type: ignore[union-attr]
+        test_client.app.state.tts_speaker = None  # type: ignore[union-attr]
+
+        resp = test_client.post(
+            "/agent/confirm",
+            json={"tool_name": "open_application", "arguments": {"application": "firefox"}, "tts": False},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["tool_used"] == "open_application"
+        assert data["tool_result"]["launched"] is True
+        assert launched == [["firefox"]]
 

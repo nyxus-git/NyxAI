@@ -41,6 +41,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional TTS voice ID override (e.g., 'af_heart', 'af_bella', 'af_nova').",
     )
+    auto_approve: bool = Field(
+        default=False,
+        description="When True in agent mode, allowlisted confirmation tools (e.g. open_application) run automatically.",
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -80,6 +84,16 @@ class VisemeFrameSchema(BaseModel):
     time_seconds: float
     mouth_open: float
     viseme: str
+
+
+class AgentConfirmRequest(BaseModel):
+    """Request schema for POST /agent/confirm."""
+
+    tool_name: str = Field(min_length=1, max_length=128)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    conversation_id: UUID | None = None
+    tts: bool = True
+    voice: str | None = None
 
 
 class ChatResponse(BaseModel):

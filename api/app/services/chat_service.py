@@ -75,6 +75,7 @@ class ChatService:
         message: str,
         conversation_id: uuid.UUID | None = None,
         mode: AgentMode = AgentMode.COMPANION,
+        auto_approve: bool = False,
     ) -> tuple[str, uuid.UUID, str | None, dict | None]:
         """
         Process a user message and return NyxAI's response.
@@ -120,6 +121,7 @@ class ChatService:
             response_text, tool_used, tool_result = await self._handle_agent(
                 message=message,
                 conv_key=conv_key,
+                auto_approve=auto_approve,
             )
         else:
             if mode == AgentMode.AGENT and self._agent is None:
@@ -216,6 +218,7 @@ class ChatService:
         self,
         message: str,
         conv_key: str,
+        auto_approve: bool = False,
     ) -> tuple[str, str | None, dict | None]:
         """
         Handle an agent mode request — tool-calling agentic loop.
@@ -233,6 +236,7 @@ class ChatService:
             "agent_delegating",
             conversation_id=conv_key,
             history_length=len(history),
+            auto_approve=auto_approve,
         )
 
         assert self._agent is not None, "_handle_agent called without an initialized NyxAgent"
@@ -240,6 +244,7 @@ class ChatService:
             message=message,
             history=history,
             conversation_id=conv_key,
+            auto_approve=auto_approve,
         )
 
         # Persist both messages

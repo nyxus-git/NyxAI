@@ -31,8 +31,23 @@ TOOL_POLICY: dict[str, PermissionLevel] = {
     "get_system_info": PermissionLevel.SAFE,
     "get_gpu_status": PermissionLevel.SAFE,
 
-    # ── Application Tools  — External effects, need approval
+    # ── Read-only File, Web, Task & Planning Tools
+    "list_directory": PermissionLevel.SAFE,
+    "read_file": PermissionLevel.SAFE,
+    "search_files": PermissionLevel.SAFE,
+    "read_webpage": PermissionLevel.SAFE,
+    "add_task": PermissionLevel.SAFE,
+    "list_tasks": PermissionLevel.SAFE,
+    "complete_task": PermissionLevel.SAFE,
+    "set_reminder": PermissionLevel.SAFE,
+    "create_plan": PermissionLevel.SAFE,
+    "update_plan": PermissionLevel.SAFE,
+
+    # ── Application & File Mutation Tools — Require confirmation unless approved
     "open_application": PermissionLevel.CONFIRMATION,
+    "move_file": PermissionLevel.CONFIRMATION,
+    "copy_file": PermissionLevel.CONFIRMATION,
+    "delete_file": PermissionLevel.CONFIRMATION,
 
     # ── Browser Tools  — Opens external URLs, need approval
     "open_url": PermissionLevel.CONFIRMATION,

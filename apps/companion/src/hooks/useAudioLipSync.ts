@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { VisemeFrame, VisemeKind } from '../types/companion';
 
 export interface LipSyncLiveState {
@@ -188,13 +188,16 @@ export function useAudioLipSync(muted: boolean): LipSyncLiveState {
     [muted, stopAudio]
   );
 
-  return {
-    mouthOpenRef,
-    visemeRef,
-    audioEnergyRef,
-    isPlayingRef,
-    playAudio,
-    stopAudio,
-  };
+  return useMemo(
+    () => ({
+      mouthOpenRef,
+      visemeRef,
+      audioEnergyRef,
+      isPlayingRef,
+      playAudio,
+      stopAudio,
+    }),
+    [playAudio, stopAudio]
+  );
 }
 

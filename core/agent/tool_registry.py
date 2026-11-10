@@ -131,25 +131,26 @@ class ToolRegistry:
         """Return True if a tool with the given name is registered."""
         return name in self._tools
 
-    async def dispatch(self, tool_call: ToolCall) -> ToolResult:
+    async def dispatch(self, tool_call: ToolCall, confirmed: bool = False) -> ToolResult:
         """
         Dispatch a tool call from the LLM: validate → check policy → execute.
 
         This is the safe execution path. It enforces:
         1. The tool exists in the registry
         2. The tool is not BLOCKED by the safety policy
-        3. The tool is auto-executable (SAFE level) — CONFIRMATION+ requires approval
+        3. The tool is auto-executable (SAFE level) unless confirmed=True for CONFIRMATION tools
         4. The arguments pass CommandValidator checks
 
         Args:
             tool_call: The ToolCall from the LLM (name + arguments).
+            confirmed: Whether the user approved executing CONFIRMATION-level tools.
 
         Returns:
             ToolResult from the tool handler.
 
         Raises:
             ToolNotFoundError: If the tool name is not registered.
-            ToolPermissionError: If the tool requires human confirmation.
+            ToolPermissionError: If the tool is BLOCKED.
             ToolValidationError: If arguments fail safety validation.
         """
         tool_name = tool_call.name
@@ -168,9 +169,10 @@ class ToolRegistry:
             logger.error("tool_dispatch_blocked", tool_name=tool_name)
             raise ToolPermissionError(tool_name, permission)
 
-        # 3. Only auto-execute SAFE tools
-        #    CONFIRMATION tools return a pending result for the API client to approve
-        if not can_auto_execute(permission):
+        # 3. Only auto-execute SAFE tools unless explicitly confirmed for CONFIRMATION tools
+        if not can_auto_execute(permission) and not (
+            confirmed and permission == PermissionLevel.CONFIRMATION
+        ):
             logger.info(
                 "tool_dispatch_needs_confirmation",
                 tool_name=tool_name,

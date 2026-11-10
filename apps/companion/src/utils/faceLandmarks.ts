@@ -92,11 +92,13 @@ export async function detectPhotoFaceLandmarks(imageUrl: string): Promise<Detect
       const reTop = face[386];
       const reBot = face[374];
 
-      // Mouth & chin
+      // Mouth & chin: use inner lip seam (13, 14) for accurate lip-parting center
       const mLeft = face[61];
       const mRight = face[291];
-      const mTop = face[0];
-      const mBot = face[17];
+      const mOuterTop = face[0];
+      const mOuterBot = face[17];
+      const mInnerTop = face[13] ?? mOuterTop;
+      const mInnerBot = face[14] ?? mOuterBot;
       const chin = face[152];
 
       const landmarks: AvatarLandmarks = {
@@ -114,9 +116,9 @@ export async function detectPhotoFaceLandmarks(imageUrl: string): Promise<Detect
         },
         mouth: {
           x: clamp((mLeft.x + mRight.x) / 2, 0.05, 0.95),
-          y: clamp((mTop.y + mBot.y) / 2, 0.05, 0.95),
-          rx: clamp(Math.abs(mRight.x - mLeft.x) * 0.6, 0.03, 0.3),
-          ry: clamp(Math.max(Math.abs(mBot.y - mTop.y) * 0.85, 0.022), 0.012, 0.2),
+          y: clamp((mInnerTop.y + mInnerBot.y) / 2, 0.05, 0.95),
+          rx: clamp(Math.abs(mRight.x - mLeft.x) * 0.46, 0.03, 0.25),
+          ry: clamp(Math.max(Math.abs(mOuterBot.y - mOuterTop.y) * 0.44, 0.015), 0.012, 0.15),
         },
         chin_y: clamp(chin.y, 0.2, 0.98),
       };

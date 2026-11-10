@@ -150,7 +150,7 @@ class WhisperTranscriber(STTProvider):
         device: str = "cuda",
         compute_type: str = "float16",
         language: str = "auto",
-        initial_prompt: str | None = "Namaste NyxAI. English, Hindi, Marathi, Hinglish: kaise ho, kya chal raha hai, काय चाललंय.",
+        initial_prompt: str | None = None,
     ) -> None:
         self._model_name = model
         self._device = device
@@ -317,35 +317,52 @@ class WhisperTranscriber(STTProvider):
 
         audio_float32, actual_rate = self._audio_bytes_to_numpy(audio_bytes, sample_rate)
 
+        # Normalize quiet laptop microphone signals before VAD/Whisper
+        if len(audio_float32) > 0:
+            peak = float(np.max(np.abs(audio_float32)))
+            if 0.002 < peak < 0.25:
+                gain = min(0.5 / peak, 12.0)
+                audio_float32 = np.clip(audio_float32 * gain, -1.0, 1.0)
+
+        audio_rms = float(np.sqrt(np.mean(np.square(audio_float32)))) if len(audio_float32) > 0 else 0.0
+        duration = len(audio_float32) / max(actual_rate, 1)
+
         logger.debug(
             "whisper_transcribing",
-            audio_duration_s=round(len(audio_float32) / actual_rate, 2),
+            audio_duration_s=round(duration, 2),
+            rms=round(audio_rms, 4),
             device=self._device,
         )
 
-        try:
-            segments_iter, info = self._model.transcribe(
-                audio_float32,
-                language=self._language,
-                beam_size=5,
-                initial_prompt=self._initial_prompt,
-                vad_filter=True,          # Skip silent parts (VAD built into faster-whisper)
-                vad_parameters=dict(
-                    min_silence_duration_ms=300,
-                    speech_pad_ms=200,
-                ),
-            )
-            segments = []
-            full_text_parts = []
-            for seg in segments_iter:
-                segments.append(
-                    TranscriptionSegment(
-                        start=seg.start,
-                        end=seg.end,
-                        text=seg.text.strip(),
-                    )
+        def _run_model(use_vad: bool) -> tuple[list[TranscriptionSegment], list[str], Any]:
+            kwargs: dict[str, Any] = {
+                "language": self._language,
+                "beam_size": 5,
+                "initial_prompt": self._initial_prompt,
+                "vad_filter": use_vad,
+            }
+            if use_vad:
+                kwargs["vad_parameters"] = dict(
+                    threshold=0.32,
+                    min_speech_duration_ms=120,
+                    min_silence_duration_ms=350,
+                    speech_pad_ms=250,
                 )
-                full_text_parts.append(seg.text.strip())
+            segs_iter, info_obj = self._model.transcribe(audio_float32, **kwargs)
+            segs: list[TranscriptionSegment] = []
+            parts: list[str] = []
+            for seg in segs_iter:
+                text_seg = seg.text.strip()
+                segs.append(TranscriptionSegment(start=seg.start, end=seg.end, text=text_seg))
+                if text_seg:
+                    parts.append(text_seg)
+            return segs, parts, info_obj
+
+        try:
+            segments, full_text_parts, info = _run_model(use_vad=True)
+            if not full_text_parts and audio_rms > 0.006 and duration >= 0.25:
+                logger.info("whisper_vad_empty_retrying_without_vad", rms=round(audio_rms, 4), duration_s=round(duration, 2))
+                segments, full_text_parts, info = _run_model(use_vad=False)
 
         except Exception as e:
             if self._device == "cuda" and ("cublas" in str(e).lower() or "cuda" in str(e).lower() or "library" in str(e).lower()):
@@ -362,32 +379,13 @@ class WhisperTranscriber(STTProvider):
                     device="cpu",
                     compute_type="int8",
                 )
-                segments_iter, info = self._model.transcribe(
-                    audio_float32,
-                    language=self._language,
-                    beam_size=5,
-                    vad_filter=True,
-                    vad_parameters=dict(
-                        min_silence_duration_ms=300,
-                        speech_pad_ms=200,
-                    ),
-                )
-                segments = []
-                full_text_parts = []
-                for seg in segments_iter:
-                    segments.append(
-                        TranscriptionSegment(
-                            start=seg.start,
-                            end=seg.end,
-                            text=seg.text.strip(),
-                        )
-                    )
-                    full_text_parts.append(seg.text.strip())
+                segments, full_text_parts, info = _run_model(use_vad=True)
+                if not full_text_parts and audio_rms > 0.006 and duration >= 0.25:
+                    segments, full_text_parts, info = _run_model(use_vad=False)
             else:
                 raise
 
         full_text = " ".join(full_text_parts).strip()
-        duration = len(audio_float32) / actual_rate
 
         logger.info(
             "whisper_transcription_complete",

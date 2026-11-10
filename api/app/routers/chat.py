@@ -20,12 +20,18 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from api.app.schemas.chat import ChatRequest, ChatResponse, VisemeFrameSchema
+from api.app.schemas.chat import (
+    AgentConfirmRequest,
+    ChatRequest,
+    ChatResponse,
+    VisemeFrameSchema,
+)
 from api.app.services.avatar_service import (
     detect_response_emotion,
     synthesize_speech_with_visemes,
 )
-from core.agent.schemas import AgentMode
+from core.agent.schemas import AgentMode, ToolCall
+from core.agent.tool_registry import ToolNotFoundError, ToolPermissionError, ToolValidationError
 from core.brain.llm import LLMConnectionError, LLMModelError, LLMTimeoutError
 from core.logging import get_logger
 
@@ -87,6 +93,7 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             message=body.message,
             conversation_id=body.conversation_id,
             mode=agent_mode,
+            auto_approve=body.auto_approve,
         )
 
     except LLMConnectionError as e:
@@ -158,6 +165,66 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         mode=body.mode,
         tool_used=tool_used,
         tool_result=tool_result,
+        audio=audio_b64,
+        visemes=[VisemeFrameSchema(**frame) for frame in visemes_raw],
+        emotion=emotion,
+    )
+
+
+@router.post(
+    "/agent/confirm",
+    response_model=ChatResponse,
+    summary="Execute a pending confirmation-level tool approved by the user",
+)
+async def confirm_agent_tool(request: Request, body: AgentConfirmRequest) -> ChatResponse:
+    """Execute a CONFIRMATION-level tool (e.g. open_application) after user approval."""
+    registry = getattr(request.app.state, "tool_registry", None)
+    if registry is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "agent_unavailable", "message": "Tool registry is not initialized."},
+        )
+
+    conv_id = body.conversation_id or uuid.uuid4()
+    tool_call = ToolCall(name=body.tool_name, arguments=body.arguments)
+
+    try:
+        result = await registry.dispatch(tool_call, confirmed=True)
+    except (ToolNotFoundError, ToolPermissionError, ToolValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "tool_rejected", "message": str(exc)},
+        ) from exc
+
+    reply_text = (
+        result.display_text
+        if result.success and result.display_text
+        else (result.error or f"Could not run {body.tool_name}.")
+    )
+
+    audio_b64 = None
+    visemes_raw: list[dict] = []
+    if body.tts:
+        tts_speaker = getattr(request.app.state, "tts_speaker", None)
+        if tts_speaker:
+            try:
+                audio_b64, visemes_raw = await synthesize_speech_with_visemes(
+                    tts_speaker=tts_speaker,
+                    text=reply_text,
+                    voice=body.voice,
+                )
+            except Exception as exc:
+                logger.warning("confirm_tts_failed", error=str(exc))
+
+    emotion = detect_response_emotion(reply_text, tool_used=body.tool_name, tool_result=result.data or {"error": result.error})
+
+    return ChatResponse(
+        response=reply_text,
+        conversation_id=conv_id,
+        model=request.app.state.llm_provider.get_model_name(),
+        mode="agent",
+        tool_used=body.tool_name,
+        tool_result=result.data or ({"error": result.error} if result.error else None),
         audio=audio_b64,
         visemes=[VisemeFrameSchema(**frame) for frame in visemes_raw],
         emotion=emotion,

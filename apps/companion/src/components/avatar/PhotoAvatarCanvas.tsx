@@ -61,6 +61,7 @@ export const PhotoAvatarCanvas: React.FC<PhotoAvatarCanvasProps> = ({
   audioEnergyRef,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const jawScratchRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<AvatarState>(state);
   const landmarksRef = useRef<AvatarLandmarks>(landmarks);
   const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -103,7 +104,7 @@ export const PhotoAvatarCanvas: React.FC<PhotoAvatarCanvasProps> = ({
       const off = document.createElement('canvas');
       off.width = img.naturalWidth || img.width;
       off.height = img.naturalHeight || img.height;
-      const offCtx = off.getContext('2d');
+      const offCtx = off.getContext('2d', { willReadFrequently: true });
       if (offCtx && off.width > 0 && off.height > 0) {
         offCtx.drawImage(img, 0, 0);
         const lm = landmarksRef.current;
@@ -111,13 +112,13 @@ export const PhotoAvatarCanvas: React.FC<PhotoAvatarCanvasProps> = ({
           leftLid: samplePixelRgb(
             offCtx,
             lm.left_eye.x * off.width,
-            (lm.left_eye.y - lm.left_eye.ry * 1.15) * off.height,
+            (lm.left_eye.y - Math.min(0.028, lm.left_eye.ry * 0.85)) * off.height,
             [225, 185, 168]
           ),
           rightLid: samplePixelRgb(
             offCtx,
             lm.right_eye.x * off.width,
-            (lm.right_eye.y - lm.right_eye.ry * 1.15) * off.height,
+            (lm.right_eye.y - Math.min(0.028, lm.right_eye.ry * 0.85)) * off.height,
             [225, 185, 168]
           ),
           lipColor: samplePixelRgb(
@@ -265,66 +266,133 @@ export const PhotoAvatarCanvas: React.FC<PhotoAvatarCanvasProps> = ({
       const px = (nx: number) => imgX + nx * drawW;
       const py = (ny: number) => imgY + ny * drawH;
 
-      // Real-time lip-sync jaw drop & mouth cavity
+      // Real-time lip-sync jaw drop & mouth cavity aligned to the exact lip parting seam (my)
       if (smoothJaw > 0.015) {
         const mx = px(lm.mouth.x);
         const my = py(lm.mouth.y);
         const mrx = lm.mouth.rx * drawW;
         const mry = lm.mouth.ry * drawH;
         const viseme = visemeRef.current;
-        const widthFactor = viseme === 'wide' ? 1.1 : viseme === 'slight' ? 0.88 : 1.0;
-        const jawDrop = smoothJaw * Math.max(mry * 1.45, size * 0.042);
+        const widthFactor = viseme === 'wide' ? 1.06 : viseme === 'slight' ? 0.86 : 0.96;
+        const jawDrop = smoothJaw * Math.max(mry * 1.75, size * 0.036);
 
-        // 1. Shift lower jaw/chin slice smoothly downward
-        const chinBottom = Math.min(imgY + drawH, py(lm.chin_y) + size * 0.08);
-        const sliceTop = my + mry * 0.1;
-        const sliceHeight = Math.max(12, chinBottom - sliceTop);
+        // 1. Feathered lower-lip & jaw displacement on offscreen scratch canvas
+        if (!jawScratchRef.current) {
+          jawScratchRef.current = document.createElement('canvas');
+        }
+        const jawCanvas = jawScratchRef.current;
+        if (jawCanvas.width !== canvas.width || jawCanvas.height !== canvas.height) {
+          jawCanvas.width = canvas.width;
+          jawCanvas.height = canvas.height;
+        }
+        const jawCtx = jawCanvas.getContext('2d');
+        if (jawCtx) {
+          const chinBottom = Math.min(imgY + drawH, py(lm.chin_y) + size * 0.06);
+          const jawSpanY = Math.max(size * 0.11, chinBottom - my);
+          const patchRx = mrx * 1.9;
+          const patchCy = my + jawDrop + jawSpanY * 0.45;
+          const patchRy = jawSpanY * 0.65;
+
+          jawCtx.save();
+          jawCtx.setTransform(1, 0, 0, 1, 0, 0);
+          jawCtx.clearRect(0, 0, jawCanvas.width, jawCanvas.height);
+          jawCtx.scale(dpr, dpr);
+
+          // Mirror the main portrait head transform + downward jaw shift
+          jawCtx.translate(cx + swayX, cy + breathY + smoothPtrY * 2.5);
+          jawCtx.rotate(headTilt);
+          jawCtx.scale(scaleBreath, scaleBreath);
+          jawCtx.translate(-cx, -cy);
+          jawCtx.drawImage(img, imgX, imgY + jawDrop, drawW, drawH);
+
+          // Soft elliptical feather mask below the lip seam (no hard edges on chin/cheeks)
+          jawCtx.globalCompositeOperation = 'destination-in';
+          jawCtx.save();
+          jawCtx.translate(mx, patchCy);
+          jawCtx.scale(patchRx, patchRy);
+          const maskGrad = jawCtx.createRadialGradient(0, 0, 0.25, 0, 0, 1);
+          maskGrad.addColorStop(0, 'rgba(0,0,0,1)');
+          maskGrad.addColorStop(0.68, 'rgba(0,0,0,0.92)');
+          maskGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          jawCtx.fillStyle = maskGrad;
+          jawCtx.beginPath();
+          jawCtx.arc(0, 0, 1, 0, Math.PI * 2);
+          jawCtx.fill();
+          jawCtx.restore();
+
+          // Cut away anything above the shifted lower-lip seam so upper lip stays fixed
+          jawCtx.globalCompositeOperation = 'destination-out';
+          jawCtx.fillStyle = 'rgba(0,0,0,1)';
+          jawCtx.beginPath();
+          jawCtx.moveTo(mx - patchRx * 1.2, 0);
+          jawCtx.lineTo(mx + patchRx * 1.2, 0);
+          jawCtx.lineTo(mx + patchRx * 1.2, my + jawDrop * 0.72);
+          jawCtx.quadraticCurveTo(mx, my + jawDrop * 1.02, mx - patchRx * 1.2, my + jawDrop * 0.72);
+          jawCtx.closePath();
+          jawCtx.fill();
+          jawCtx.restore();
+
+          // Composite feathered shifted jaw onto main canvas
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(jawCanvas, 0, 0);
+          ctx.restore();
+        }
+
+        // 2. Inner mouth cavity anchored strictly between upper lip seam (my) and dropped lower lip
+        const openRx = mrx * 0.82 * widthFactor;
+        const cornerY = my - jawDrop * 0.06;
+        const upperCtrlY = my - jawDrop * 0.1;
+        const lowerCtrlY = my + jawDrop * 1.22;
 
         ctx.save();
         ctx.beginPath();
-        ctx.ellipse(
-          mx,
-          sliceTop + sliceHeight * 0.45 + jawDrop * 0.45,
-          mrx * 1.95,
-          sliceHeight * 0.65,
-          0,
-          0,
-          Math.PI * 2
-        );
-        ctx.clip();
-        ctx.drawImage(img, imgX, imgY + jawDrop, drawW, drawH);
-        ctx.restore();
-
-        // 2. Feathered dark inner mouth cavity + subtle upper teeth highlight
-        const openRx = mrx * 0.85 * widthFactor;
-        const openRy = Math.max(2.2, jawDrop * 0.56 + mry * 0.28);
-        const cavityY = my + jawDrop * 0.42;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.ellipse(mx, cavityY, openRx, openRy, 0, 0, Math.PI * 2);
+        ctx.moveTo(mx - openRx, cornerY);
+        ctx.quadraticCurveTo(mx, upperCtrlY, mx + openRx, cornerY);
+        ctx.quadraticCurveTo(mx, lowerCtrlY, mx - openRx, cornerY);
+        ctx.closePath();
         ctx.clip();
 
+        const cavityMidY = my + jawDrop * 0.42;
         const mouthGrad = ctx.createRadialGradient(
           mx,
-          cavityY - openRy * 0.2,
-          openRx * 0.1,
+          cavityMidY,
+          openRx * 0.08,
           mx,
-          cavityY,
-          Math.max(openRx, openRy) * 1.15
+          cavityMidY,
+          Math.max(openRx, jawDrop) * 1.1
         );
-        mouthGrad.addColorStop(0, '#1f070c');
-        mouthGrad.addColorStop(0.7, '#3a0e18');
+        mouthGrad.addColorStop(0, '#190408');
+        mouthGrad.addColorStop(0.72, '#3d0e19');
         mouthGrad.addColorStop(1, colors.lipColor);
         ctx.fillStyle = mouthGrad;
-        ctx.fillRect(mx - openRx - 2, cavityY - openRy - 2, openRx * 2 + 4, openRy * 2 + 4);
+        ctx.fillRect(mx - openRx - 2, my - jawDrop - 2, openRx * 2 + 4, jawDrop * 3 + 4);
 
-        if (smoothJaw > 0.25) {
-          ctx.fillStyle = `rgba(244, 236, 234, ${Math.min(0.65, smoothJaw * 0.75)})`;
+        if (smoothJaw > 0.22) {
+          ctx.fillStyle = `rgba(244, 236, 234, ${Math.min(0.68, smoothJaw * 0.78)})`;
           ctx.beginPath();
-          ctx.ellipse(mx, cavityY - openRy * 0.58, openRx * 0.68, openRy * 0.28, 0, 0, Math.PI * 2);
+          ctx.ellipse(
+            mx,
+            my + jawDrop * 0.14,
+            openRx * 0.62,
+            Math.max(1.5, jawDrop * 0.2),
+            0,
+            0,
+            Math.PI * 2
+          );
           ctx.fill();
         }
+        ctx.restore();
+
+        // Subtle soft lip border around the opening
+        ctx.save();
+        ctx.strokeStyle = 'rgba(42, 8, 16, 0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(mx - openRx, cornerY);
+        ctx.quadraticCurveTo(mx, upperCtrlY, mx + openRx, cornerY);
+        ctx.quadraticCurveTo(mx, lowerCtrlY, mx - openRx, cornerY);
+        ctx.stroke();
         ctx.restore();
       } else if (st === 'happy' || st === 'excited') {
         // Subtle warm smile highlight

@@ -70,22 +70,23 @@ _URL_PATTERN = re.compile(
 # passed as an application name to xdg-open or similar.
 _ALLOWED_APPLICATIONS: set[str] = {
     # Browsers
-    "firefox", "chromium", "google-chrome", "brave", "opera",
-    # Development
-    "code", "codium", "vscodium", "nvim", "vim", "nano",
-    "kitty", "alacritty", "wezterm", "ghostty", "foot",
-    "gitk", "gitkraken",
+    "firefox", "chromium", "google-chrome", "google-chrome-stable", "brave", "brave-browser", "opera", "microsoft-edge", "browser",
+    # Development & Terminals
+    "code", "vscode", "vs code", "codium", "vscodium", "nvim", "vim", "nano",
+    "kitty", "alacritty", "wezterm", "ghostty", "foot", "konsole", "gnome-terminal", "xfce4-terminal", "terminal",
+    "gitk", "gitkraken", "kate",
     # Office & Productivity
     "libreoffice", "writer", "calc", "impress",
-    "obsidian", "notion", "logseq",
+    "obsidian", "notion", "logseq", "okular",
     # Media
-    "vlc", "mpv", "celluloid", "totem",
-    "rhythmbox", "audacity", "spotify",
+    "vlc", "mpv", "celluloid", "totem", "gwenview",
+    "rhythmbox", "audacity", "spotify", "obs", "steam",
     "gimp", "inkscape", "krita",
-    # File Managers
-    "nautilus", "thunar", "dolphin", "nemo", "ranger",
+    # File Managers & Utilities
+    "nautilus", "thunar", "dolphin", "nemo", "ranger", "files", "file manager",
+    "kcalc", "gnome-calculator", "calculator", "spectacle", "ark", "systemsettings", "settings",
     # Communication
-    "discord", "telegram-desktop", "signal-desktop", "slack",
+    "discord", "telegram", "telegram-desktop", "signal-desktop", "slack",
     # System
     "gnome-system-monitor", "htop", "btop", "bashtop",
     "pavucontrol", "blueman-manager",
@@ -164,14 +165,20 @@ class CommandValidator:
 
     def _validate_open_application(self, arguments: dict) -> ValidationResult:
         """Validate that the application name is in the safe allowlist."""
-        app_name = arguments.get("application", "").strip().lower()
+        app_name = arguments.get("application", "").strip().lower().strip("\"'")
 
         if not app_name:
             return ValidationResult.failed("Application name cannot be empty.")
 
-        # Check exact match or prefix match (e.g. "code" matches "code --new-window")
-        base_name = app_name.split()[0] if " " in app_name else app_name
-        if base_name not in _ALLOWED_APPLICATIONS:
+        aliases = {
+            "vs code": "code",
+            "visual studio code": "code",
+            "google chrome": "google-chrome",
+            "file manager": "dolphin",
+        }
+        normalized = aliases.get(app_name, app_name)
+        base_name = normalized.split()[0] if " " in normalized else normalized
+        if normalized not in _ALLOWED_APPLICATIONS and base_name not in _ALLOWED_APPLICATIONS:
             return ValidationResult.failed(
                 f"Application '{app_name}' is not in the allowed list. "
                 f"Add it to safety/command_validator.py if it's safe."

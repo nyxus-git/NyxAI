@@ -64,9 +64,13 @@ When the user asks something conversational that does NOT need a tool:
 
 Tool use examples:
   - "What's my battery?" → use get_battery_status
+  - "Open Firefox" / "Launch VS Code" → use open_application(application="firefox")
   - "Summarize my notes.txt" → use read_file on notes.txt
   - "Research quantum computing" → use web_search, then read_webpage on the best result.
   - "How are you?" → respond directly, no tool needed
+
+CRITICAL HONESTY RULE:
+  - Never claim you opened an application, ran a tool, or changed something unless the tool actually returned success=True in its ToolResult. If a tool failed or wasn't found, tell the user honestly.
 """
 
 
@@ -106,6 +110,7 @@ class NyxAgent:
         message: str,
         history: list[Message] | None = None,
         conversation_id: str | None = None,
+        auto_approve: bool = False,
     ) -> AgentResponse:
         """
         Process a user message with full tool-calling capability.
@@ -214,7 +219,7 @@ class NyxAgent:
             messages.append(assistant_tool_msg)
 
             # Execute the tool via the registry (enforces safety + validation)
-            tool_result = await self._execute_tool(tool_call, conv_id)
+            tool_result = await self._execute_tool(tool_call, conv_id, confirmed=auto_approve)
 
             # Track which tool was used (for the AgentResponse metadata)
             tool_used = tool_call.name
@@ -238,7 +243,7 @@ class NyxAgent:
                 )
                 # Continue loop — let LLM respond to the failure result
 
-            # If tool returned pending_confirmation, return immediately
+            # If tool returned pending_confirmation, return immediately with arguments for UI approval
             if (
                 tool_result.data.get("status") == "pending_confirmation"
             ):
@@ -248,9 +253,9 @@ class NyxAgent:
                 )
                 return AgentResponse(
                     content=(
-                        f"I'd like to {tool_call.name.replace('_', ' ')} for you, "
-                        f"but I need your confirmation first. "
-                        f"This action requires approval before it can run."
+                        f"I'd like to {tool_call.name.replace('_', ' ')} for you "
+                        f"({', '.join(f'{k}={v}' for k, v in tool_call.arguments.items())}), "
+                        f"but I need your confirmation first. Click Allow to run it."
                     ),
                     model=llm_response.model,
                     tool_used=tool_call.name,
@@ -276,7 +281,12 @@ class NyxAgent:
             iterations=iterations,
         )
 
-    async def _execute_tool(self, tool_call: ToolCall, conv_id: str) -> ToolResult:
+    async def _execute_tool(
+        self,
+        tool_call: ToolCall,
+        conv_id: str,
+        confirmed: bool = False,
+    ) -> ToolResult:
         """
         Execute a tool call with error handling.
 
@@ -286,12 +296,13 @@ class NyxAgent:
         Args:
             tool_call: The tool call from the LLM.
             conv_id: Conversation prefix for log correlation.
+            confirmed: Whether CONFIRMATION-level tools are approved to run.
 
         Returns:
             ToolResult — always returns a result, never raises.
         """
         try:
-            result = await self._registry.dispatch(tool_call)
+            result = await self._registry.dispatch(tool_call, confirmed=confirmed)
             return result
 
         except ToolNotFoundError as e:

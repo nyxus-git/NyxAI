@@ -6,6 +6,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
   SlidersHorizontal,
+  ShieldCheck,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -14,6 +15,8 @@ interface HeaderProps {
   companionName: string;
   mode: 'companion' | 'agent';
   setMode: (mode: 'companion' | 'agent') => void;
+  autoApprove: boolean;
+  onToggleAutoApprove: () => void;
   isBackendConnected: boolean;
   ollamaConnected: boolean;
   drawerOpen: boolean;
@@ -25,6 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
   companionName,
   mode,
   setMode,
+  autoApprove,
+  onToggleAutoApprove,
   isBackendConnected,
   ollamaConnected,
   drawerOpen,
@@ -73,6 +78,22 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Desktop Agent</span>
           </button>
         </div>
+
+        {mode === 'agent' && (
+          <button
+            type="button"
+            className={`auto-run-pill ${autoApprove ? 'on' : ''}`}
+            onClick={onToggleAutoApprove}
+            title={
+              autoApprove
+                ? 'Allowlisted apps and web searches launch automatically'
+                : 'Ask before launching apps or web searches'
+            }
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{autoApprove ? 'Auto-Run ON' : 'Ask Confirm'}</span>
+          </button>
+        )}
 
         <button
           type="button"

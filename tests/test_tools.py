@@ -368,6 +368,23 @@ class TestToolRegistry:
         # Should return pending confirmation, not actually open Firefox in tests
         assert result.data.get("status") == "pending_confirmation"
 
+    @pytest.mark.asyncio
+    async def test_dispatch_confirmed_tool_executes(self, monkeypatch):
+        from tools.files.file_tools import OPEN_APPLICATION_DEF, open_application
+        import shutil
+        import subprocess
+
+        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/firefox" if name == "firefox" else None)
+        launched = []
+        monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kw: launched.append(cmd))
+
+        self.registry.register(OPEN_APPLICATION_DEF, open_application)
+        tool_call = ToolCall(name="open_application", arguments={"application": "firefox"})
+        result = await self.registry.dispatch(tool_call, confirmed=True)
+        assert result.success is True
+        assert result.data.get("launched") is True
+        assert launched == [["firefox"]]
+
     def test_build_default_registry(self):
         from core.agent.tool_registry import build_default_registry
         registry = build_default_registry()

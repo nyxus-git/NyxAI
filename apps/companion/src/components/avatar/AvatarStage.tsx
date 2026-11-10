@@ -8,7 +8,10 @@ import {
   Smile,
   AlertCircle,
   HelpCircle,
+  Check,
+  X,
 } from 'lucide-react';
+import { PendingToolAction } from '../../hooks/useVoiceWebSocket';
 import { resolveAssetUrl } from '../../services/api';
 import { AvatarConfig, AvatarState, VisemeKind } from '../../types/companion';
 import { PhotoAvatarCanvas } from './PhotoAvatarCanvas';
@@ -23,6 +26,9 @@ interface AvatarStageProps {
   mouthOpenRef: React.MutableRefObject<number>;
   visemeRef: React.MutableRefObject<VisemeKind>;
   audioEnergyRef: React.MutableRefObject<number>;
+  pendingAction?: PendingToolAction | null;
+  onApproveAction?: () => void;
+  onDismissAction?: () => void;
   onOpenCustomize: () => void;
 }
 
@@ -45,6 +51,9 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   mouthOpenRef,
   visemeRef,
   audioEnergyRef,
+  pendingAction,
+  onApproveAction,
+  onDismissAction,
   onOpenCustomize,
 }) => {
   const badge = STATE_BADGE[state] ?? STATE_BADGE.idle;
@@ -89,10 +98,10 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
 
   const defaultGreeting =
     state === 'listening'
-      ? "I'm listening — go ahead and ask..."
+      ? "I'm listening — go ahead and speak..."
       : state === 'thinking'
         ? 'Let me think about that...'
-        : `Hi! I'm ${config.name}. Ask me anything by voice or text.`;
+        : `Hi! I'm ${config.name}. Tap Voice Chat or type below to talk with me.`;
 
   const subtitleText = liveSubtitle.trim() || defaultGreeting;
 
@@ -105,7 +114,10 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
       {/* Top overlay bar */}
       <div className="stage-top-bar">
         <div className="stage-identity-pill">
-          <span className="stage-state-dot" style={{ backgroundColor: badge.color, boxShadow: `0 0 10px ${badge.color}` }} />
+          <span
+            className="stage-state-dot"
+            style={{ backgroundColor: badge.color, boxShadow: `0 0 10px ${badge.color}` }}
+          />
           <span className="stage-name">{config.name}</span>
           <span className="stage-state-tag" style={{ color: badge.color }}>
             {badge.icon}
@@ -132,6 +144,25 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
       {/* Center Animated Girl Viewport */}
       <div className={`character-viewport ${state}`}>{renderCharacter()}</div>
 
+      {/* Pending Action Approval Banner (when Auto-Run is OFF) */}
+      {pendingAction && (
+        <div className="pending-action-banner" role="alert">
+          <span>
+            Allow <strong>{pendingAction.toolName.replace('_', ' ')}</strong> (
+            {Object.values(pendingAction.arguments).join(', ')})?
+          </span>
+          <div className="pending-action-btns">
+            <button type="button" className="approve-btn" onClick={onApproveAction}>
+              <Check className="w-3.5 h-3.5" />
+              <span>Allow & Run</span>
+            </button>
+            <button type="button" className="dismiss-btn" onClick={onDismissAction}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Live Spoken Subtitle Caption */}
       <div className={`live-subtitle-card ${state === 'speaking' ? 'speaking' : ''}`}>
         <p className="live-subtitle-text">{subtitleText}</p>
@@ -139,4 +170,3 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
     </section>
   );
 };
-

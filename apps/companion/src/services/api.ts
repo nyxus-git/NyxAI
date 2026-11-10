@@ -43,6 +43,26 @@ export interface ChatPayload {
   conversation_id?: string | null;
   tts?: boolean;
   voice?: string;
+  auto_approve?: boolean;
+}
+
+export async function confirmAgentTool(payload: {
+  tool_name: string;
+  arguments: Record<string, unknown>;
+  conversation_id?: string | null;
+  tts?: boolean;
+  voice?: string;
+}): Promise<ChatApiResponse> {
+  const res = await fetch(`${API_BASE}/agent/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail?.message ?? err?.detail ?? `Confirm failed (${res.status})`);
+  }
+  return (await res.json()) as ChatApiResponse;
 }
 
 export interface ChatApiResponse {

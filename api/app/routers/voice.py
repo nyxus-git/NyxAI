@@ -28,9 +28,10 @@ import json
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 
 from api.app.schemas.voice import (
+    VoiceAudioMessage,
     VoiceErrorMessage,
     VoiceIdleMessage,
     VoiceResponseMessage,
@@ -53,6 +54,109 @@ router = APIRouter(tags=["Voice"])
 async def _send(ws: WebSocket, data: dict) -> None:
     """Send a JSON message to the WebSocket client."""
     await ws.send_text(json.dumps(data))
+
+
+async def _run_voice_turn(
+    *,
+    audio_bytes: bytes,
+    mode_str: str,
+    conversation_id: uuid.UUID | None,
+    voice_override: str | None,
+    auto_approve: bool,
+    chat_service: Any,
+    transcriber: Any,
+    tts_speaker: Any,
+) -> dict[str, Any]:
+    """Execute STT -> Chat/Agent -> TTS + Viseme pipeline for one voice turn."""
+    if transcriber is None:
+        raise RuntimeError("STT transcriber not initialized. Check server startup.")
+
+    agent_mode = AgentMode(mode_str) if mode_str in ("companion", "agent") else AgentMode.COMPANION
+    loop = asyncio.get_running_loop()
+
+    stt_result = await loop.run_in_executor(None, lambda: transcriber.transcribe(audio_bytes))
+    if stt_result.is_empty:
+        return {"empty": True}
+
+    response_text, next_conv_id, tool_used, tool_result = await chat_service.chat(
+        message=stt_result.text,
+        conversation_id=conversation_id,
+        mode=agent_mode,
+        auto_approve=auto_approve,
+    )
+
+    audio_out_b64 = ""
+    visemes: list[dict[str, Any]] = []
+    if tts_speaker is not None:
+        try:
+            audio_out_b64, visemes = await synthesize_speech_with_visemes(
+                tts_speaker=tts_speaker,
+                text=response_text,
+                voice=voice_override,
+            )
+            audio_out_b64 = audio_out_b64 or ""
+        except Exception as e:
+            logger.error("voice_tts_error", error=str(e))
+
+    emotion = detect_response_emotion(
+        response_text,
+        tool_used=tool_used,
+        tool_result=tool_result,
+    )
+
+    return {
+        "empty": False,
+        "transcript": stt_result.text,
+        "language": stt_result.language,
+        "language_probability": stt_result.language_probability,
+        "text": response_text,
+        "audio": audio_out_b64,
+        "visemes": visemes,
+        "emotion": emotion,
+        "tool_used": tool_used,
+        "tool_result": tool_result,
+        "conversation_id": str(next_conv_id) if next_conv_id else None,
+    }
+
+
+@router.post("/voice/ask", summary="HTTP fallback endpoint for voice question")
+async def voice_ask(request: Request, body: VoiceAudioMessage) -> dict[str, Any]:
+    """Process base64 audio via HTTP when WebSocket is temporarily unavailable."""
+    try:
+        audio_bytes = base64.b64decode(body.data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "decode_error", "message": f"Invalid base64 audio: {e}"},
+        ) from e
+
+    conv_id: uuid.UUID | None = None
+    if body.conversation_id:
+        try:
+            conv_id = uuid.UUID(body.conversation_id)
+        except ValueError:
+            conv_id = None
+
+    chat_service = request.app.state.chat_service
+    transcriber = getattr(request.app.state, "transcriber", None)
+    tts_speaker = getattr(request.app.state, "tts_speaker", None)
+
+    turn = await _run_voice_turn(
+        audio_bytes=audio_bytes,
+        mode_str=body.mode,
+        conversation_id=conv_id,
+        voice_override=body.voice,
+        auto_approve=body.auto_approve,
+        chat_service=chat_service,
+        transcriber=transcriber,
+        tts_speaker=tts_speaker,
+    )
+    if turn["empty"]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "empty_transcript", "message": "No speech detected in the audio."},
+        )
+    return turn
 
 
 @router.websocket("/voice")
@@ -136,6 +240,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
 
             mode_str = message.get("mode", "companion")
             agent_mode = AgentMode(mode_str) if mode_str in ("companion", "agent") else AgentMode.COMPANION
+            auto_approve = bool(message.get("auto_approve", False))
 
             # Use provided conversation_id or maintain across turns
             msg_conv_id = message.get("conversation_id")
@@ -152,13 +257,15 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 mode=mode_str,
             )
 
+            # Signal thinking immediately so the avatar animates during STT + LLM
+            await _send(websocket, VoiceThinkingMessage().model_dump())
+
             # ── Step 1: Transcribe
             try:
                 if transcriber is None:
                     raise RuntimeError("STT transcriber not initialized. Check server startup.")
 
-                # Run transcription in thread pool (it's a blocking CPU/GPU call)
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 result = await loop.run_in_executor(
                     None,
                     lambda: transcriber.transcribe(audio_bytes),
@@ -181,7 +288,7 @@ async def voice_websocket(websocket: WebSocket) -> None:
                 await _send(
                     websocket,
                     VoiceErrorMessage(
-                        message="No speech detected in the audio.",
+                        message="No speech detected in the audio. Try speaking closer to the mic.",
                         code="empty_transcript",
                     ).model_dump(),
                 )
@@ -199,13 +306,12 @@ async def voice_websocket(websocket: WebSocket) -> None:
             )
 
             # ── Step 2: Think (LLM/Agent)
-            await _send(websocket, VoiceThinkingMessage().model_dump())
-
             try:
                 response_text, conversation_id, tool_used, tool_result = await chat_service.chat(
                     message=result.text,
                     conversation_id=conversation_id,
                     mode=agent_mode,
+                    auto_approve=auto_approve,
                 )
             except Exception as e:
                 logger.error("voice_ws_chat_error", client_id=client_id, error=str(e))

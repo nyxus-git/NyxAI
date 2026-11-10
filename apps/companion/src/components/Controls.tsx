@@ -1,33 +1,55 @@
 import React, { useState } from 'react';
-import { Mic, MicOff, Send, Volume2, VolumeX, Sparkles, Radio } from 'lucide-react';
+import {
+  AudioLines,
+  Loader2,
+  Mic,
+  PhoneOff,
+  Send,
+  Sparkles,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
+import { VoicePhase } from '../hooks/useVoiceWebSocket';
 
 interface ControlsProps {
   companionName: string;
+  voicePhase: VoicePhase;
+  voiceSessionActive: boolean;
+  onStartVoiceSession: () => void;
+  onEndVoiceSession: () => void;
+  onSendCurrentTurn: () => void;
+  onInterruptSpeaking: () => void;
   onSendMessage: (text: string) => void;
-  isRecording: boolean;
-  onToggleRecording: () => void;
   muted: boolean;
   onToggleMute: () => void;
-  handsFree: boolean;
-  onToggleHandsFree: () => void;
   showQuickPrompts?: boolean;
 }
 
 const QUICK_PROMPTS = [
-  'Hey! How are you doing today?',
+  'Open Firefox for me',
   'Check my CPU, RAM and battery',
-  'Tell me a quick fun fact',
+  'Hey! Tell me a fun fact',
 ];
+
+const PHASE_COPY: Record<Exclude<VoicePhase, 'off'>, { label: string; badgeClass: string }> = {
+  starting: { label: 'Starting microphone...', badgeClass: 'starting' },
+  listening: { label: 'Listening — speak naturally', badgeClass: 'listening' },
+  hearing: { label: 'Hearing you...', badgeClass: 'hearing' },
+  processing: { label: 'Understanding & thinking...', badgeClass: 'processing' },
+  speaking: { label: 'Speaking — real-time voice', badgeClass: 'speaking' },
+};
 
 export const Controls: React.FC<ControlsProps> = ({
   companionName,
+  voicePhase,
+  voiceSessionActive,
+  onStartVoiceSession,
+  onEndVoiceSession,
+  onSendCurrentTurn,
+  onInterruptSpeaking,
   onSendMessage,
-  isRecording,
-  onToggleRecording,
   muted,
   onToggleMute,
-  handsFree,
-  onToggleHandsFree,
   showQuickPrompts = false,
 }) => {
   const [text, setText] = useState('');
@@ -39,6 +61,66 @@ export const Controls: React.FC<ControlsProps> = ({
       setText('');
     }
   };
+
+  if (voiceSessionActive && voicePhase !== 'off') {
+    const phaseInfo = PHASE_COPY[voicePhase];
+
+    return (
+      <div className="controls-dock-wrap">
+        <div className={`live-voice-bar ${phaseInfo.badgeClass}`}>
+          <div className="live-voice-left">
+            <div className={`live-voice-orb ${phaseInfo.badgeClass}`}>
+              {voicePhase === 'starting' || voicePhase === 'processing' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : voicePhase === 'speaking' ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <AudioLines className="w-4 h-4" />
+              )}
+            </div>
+            <div className="live-voice-copy">
+              <span className="live-voice-title">Live Voice Mode</span>
+              <span className="live-voice-status">{phaseInfo.label}</span>
+            </div>
+          </div>
+
+          <div className="live-voice-actions">
+            {(voicePhase === 'listening' || voicePhase === 'hearing') && (
+              <button
+                type="button"
+                className="voice-action-pill send-now"
+                onClick={onSendCurrentTurn}
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send Now</span>
+              </button>
+            )}
+
+            {voicePhase === 'speaking' && (
+              <button
+                type="button"
+                className="voice-action-pill interrupt"
+                onClick={onInterruptSpeaking}
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span>Interrupt</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="voice-action-pill end-call"
+              onClick={onEndVoiceSession}
+              aria-label="End live voice conversation"
+            >
+              <PhoneOff className="w-3.5 h-3.5" />
+              <span>End Voice</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="controls-dock-wrap">
@@ -61,21 +143,12 @@ export const Controls: React.FC<ControlsProps> = ({
       <div className="controls-bar">
         <button
           type="button"
-          className={`mic-btn ${isRecording ? 'active' : ''}`}
-          onClick={onToggleRecording}
-          title={isRecording ? 'Stop speaking' : `Speak to ${companionName}`}
-          aria-label={isRecording ? 'Stop voice recording' : 'Start voice recording'}
+          className="voice-chat-start-btn"
+          onClick={onStartVoiceSession}
+          title={`Start real-time voice conversation with ${companionName}`}
         >
-          {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        </button>
-
-        <button
-          type="button"
-          className={`dock-toggle-btn ${handsFree ? 'active' : ''}`}
-          onClick={onToggleHandsFree}
-          title="Auto-send when you finish speaking (Hands-Free)"
-        >
-          <Radio className="w-4 h-4" />
+          <Mic className="w-4 h-4" />
+          <span>Voice Chat</span>
         </button>
 
         <button
@@ -91,7 +164,7 @@ export const Controls: React.FC<ControlsProps> = ({
           <input
             type="text"
             className="text-input"
-            placeholder={`Ask ${companionName || 'Nyx'} a question or give a command...`}
+            placeholder={`Ask ${companionName || 'Nyx'} anything or type "Open Firefox"...`}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />

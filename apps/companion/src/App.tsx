@@ -28,11 +28,11 @@ const INITIAL_CONFIG: AvatarConfig = {
 
 export const App: React.FC = () => {
   const [mode, setMode] = useState<'companion' | 'agent'>('agent');
+  const [autoApprove, setAutoApprove] = useState<boolean>(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DrawerTab>('chat');
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [handsFree, setHandsFree] = useState(true);
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(INITIAL_CONFIG);
   const [modelName, setModelName] = useState<string>('qwen2.5:3b');
   const [ollamaConnected, setOllamaConnected] = useState<boolean>(true);
@@ -56,16 +56,24 @@ export const App: React.FC = () => {
 
   const {
     avatarState,
+    voicePhase,
+    voiceSessionActive,
     messages,
     liveSubtitle,
     isRecording,
     isConnected,
     errorBanner,
+    pendingAction,
     micLevelRef,
     lipSync,
-    toggleRecording,
+    startVoiceSession,
+    endVoiceSession,
+    sendCurrentVoiceTurn,
+    interruptSpeaking,
     sendTextMessage,
     replayMessageAudio,
+    approvePendingAction,
+    dismissPendingAction,
     startNewConversation,
     loadConversation,
     clearError,
@@ -73,7 +81,7 @@ export const App: React.FC = () => {
     mode,
     voice: avatarConfig.voice,
     muted,
-    handsFree,
+    autoApprove,
   });
 
   const handleSelectConversation = async (id: string) => {
@@ -88,6 +96,8 @@ export const App: React.FC = () => {
         companionName={avatarConfig.name}
         mode={mode}
         setMode={setMode}
+        autoApprove={autoApprove}
+        onToggleAutoApprove={() => setAutoApprove((v) => !v)}
         isBackendConnected={isConnected}
         ollamaConnected={ollamaConnected}
         drawerOpen={drawerOpen}
@@ -115,6 +125,9 @@ export const App: React.FC = () => {
             mouthOpenRef={lipSync.mouthOpenRef}
             visemeRef={lipSync.visemeRef}
             audioEnergyRef={lipSync.audioEnergyRef}
+            pendingAction={pendingAction}
+            onApproveAction={() => void approvePendingAction()}
+            onDismissAction={dismissPendingAction}
             onOpenCustomize={() => setCustomizeOpen(true)}
           />
 
@@ -126,14 +139,16 @@ export const App: React.FC = () => {
 
           <Controls
             companionName={avatarConfig.name}
+            voicePhase={voicePhase}
+            voiceSessionActive={voiceSessionActive}
+            onStartVoiceSession={() => void startVoiceSession()}
+            onEndVoiceSession={endVoiceSession}
+            onSendCurrentTurn={sendCurrentVoiceTurn}
+            onInterruptSpeaking={interruptSpeaking}
             onSendMessage={sendTextMessage}
-            isRecording={isRecording}
-            onToggleRecording={toggleRecording}
             muted={muted}
             onToggleMute={() => setMuted((m) => !m)}
-            handsFree={handsFree}
-            onToggleHandsFree={() => setHandsFree((h) => !h)}
-            showQuickPrompts={messages.length === 0}
+            showQuickPrompts={!voiceSessionActive && messages.length === 0}
           />
         </div>
 
