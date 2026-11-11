@@ -44,7 +44,7 @@ dev:
 
 # ─── Launch Dedicated Desktop App ──────────────────────────────────────────────
 app:
-	$(PYTHON) apps/desktop/desktop_app.py --action show
+	$(PYTHON) apps/desktop/desktop_app.py --action show --detach
 
 # ─── Run tests ─────────────────────────────────────────────────────────────────
 test:

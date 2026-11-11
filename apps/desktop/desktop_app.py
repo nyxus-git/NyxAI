@@ -22,6 +22,7 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -39,7 +40,7 @@ if "QTWEBENGINE_CHROMIUM_FLAGS" not in os.environ:
 
 from PyQt6.QtCore import QTimer, Qt, QUrl
 from PyQt6.QtGui import QAction, QColor, QIcon
-from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+from PyQt6.QtNetwork import QLocalServer
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import (
@@ -53,6 +54,8 @@ BACKEND_HOST = os.getenv("NYXAI_HOST", "127.0.0.1")
 BACKEND_PORT = int(os.getenv("NYXAI_PORT", "8000"))
 APP_URL = os.getenv("NYXAI_APP_URL", f"http://{BACKEND_HOST}:{BACKEND_PORT}")
 SINGLE_INSTANCE_KEY = "nyxai-desktop-app-instance"
+SOCKET_PATH = Path(tempfile.gettempdir()) / SINGLE_INSTANCE_KEY
+PID_FILE = Path(tempfile.gettempdir()) / f"{SINGLE_INSTANCE_KEY}.pid"
 ICON_PATH = PROJECT_ROOT / "apps" / "companion" / "public" / "favicon.svg"
 
 
@@ -133,17 +136,128 @@ def ensure_backend_running() -> tuple[str, subprocess.Popen[bytes] | None]:
     return target_url, proc
 
 
-def send_single_instance_command(command: str = "toggle") -> bool:
-    """If an existing desktop window is running, send a command to it."""
-    sock = QLocalSocket()
-    sock.connectToServer(SINGLE_INSTANCE_KEY)
-    if not sock.waitForConnected(250):
+def _is_desktop_app_pid(pid: int) -> bool:
+    """Return True if *pid* is another live process running apps/desktop/desktop_app.py."""
+    if pid <= 0 or pid in (os.getpid(), os.getppid()):
         return False
-    sock.write(command.encode("utf-8"))
-    sock.flush()
-    sock.waitForBytesWritten(250)
-    sock.disconnectFromServer()
-    return True
+    cmdline_path = Path(f"/proc/{pid}/cmdline")
+    try:
+        raw = cmdline_path.read_bytes()
+    except OSError:
+        return False
+    args = [part for part in raw.decode("utf-8", errors="ignore").split("\0") if part]
+    if len(args) < 2:
+        return False
+    exe_name = Path(args[0]).name
+    if not exe_name.startswith("python"):
+        return False
+    target_script = str(Path(__file__).resolve())
+    return any(
+        not arg.startswith("-")
+        and (arg == target_script or Path(arg).name == "desktop_app.py")
+        for arg in args[1:]
+    )
+
+
+def _find_desktop_app_pids() -> list[int]:
+    """Find PIDs of other running or suspended desktop_app.py instances."""
+    pids: list[int] = []
+    seen: set[int] = set()
+
+    if PID_FILE.exists():
+        try:
+            pid = int(PID_FILE.read_text(encoding="utf-8").strip())
+            if _is_desktop_app_pid(pid):
+                pids.append(pid)
+                seen.add(pid)
+        except (OSError, ValueError):
+            pass
+
+    proc_dir = Path("/proc")
+    if proc_dir.is_dir():
+        for entry in proc_dir.iterdir():
+            if not entry.name.isdigit():
+                continue
+            pid = int(entry.name)
+            if pid not in seen and _is_desktop_app_pid(pid):
+                pids.append(pid)
+                seen.add(pid)
+
+    return pids
+
+
+def _cleanup_unresponsive_instance() -> None:
+    """Terminate frozen/unresponsive desktop_app.py processes and remove stale IPC files."""
+    for pid in _find_desktop_app_pids():
+        print(
+            f"[NyxAI] Stopping unresponsive or suspended desktop instance (PID {pid})...",
+            file=sys.stderr,
+        )
+        try:
+            # SIGCONT wakes Ctrl+Z-suspended instances so SIGTERM can complete.
+            os.kill(pid, signal.SIGCONT)
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            continue
+
+        deadline = time.monotonic() + 0.8
+        while time.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                break
+            time.sleep(0.05)
+        else:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+    try:
+        SOCKET_PATH.unlink(missing_ok=True)
+    except OSError:
+        pass
+    try:
+        PID_FILE.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def send_single_instance_command(
+    command: str = "toggle",
+    *,
+    timeout_s: float = 0.8,
+    recover_unresponsive: bool = True,
+) -> bool:
+    """If a responsive desktop window is running, send *command* and await an ACK."""
+    if not SOCKET_PATH.exists():
+        return False
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(timeout_s)
+    try:
+        sock.connect(str(SOCKET_PATH))
+        sock.sendall(f"{command}\n".encode("utf-8"))
+        reply = b""
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline and b"ok" not in reply:
+            try:
+                chunk = sock.recv(64)
+            except TimeoutError:
+                break
+            if not chunk:
+                break
+            reply += chunk
+        if b"ok" in reply:
+            return True
+    except (TimeoutError, OSError):
+        pass
+    finally:
+        sock.close()
+
+    if recover_unresponsive:
+        _cleanup_unresponsive_instance()
+    return False
 
 
 class NyxWebPage(QWebEnginePage):
@@ -216,7 +330,11 @@ class NyxDesktopWindow(QMainWindow):
         # Single-instance listener
         QLocalServer.removeServer(SINGLE_INSTANCE_KEY)
         self._ipc_server = QLocalServer(self)
-        self._ipc_server.listen(SINGLE_INSTANCE_KEY)
+        if self._ipc_server.listen(SINGLE_INSTANCE_KEY):
+            try:
+                PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
+            except OSError:
+                pass
         self._ipc_server.newConnection.connect(self._on_ipc_connection)
 
         # System tray setup
@@ -299,14 +417,17 @@ class NyxDesktopWindow(QMainWindow):
         if self.isVisible() and not self.isMinimized():
             self.hide()
         else:
-            self.showNormal()
-            self.raise_()
-            self.activateWindow()
+            self.show_window()
 
     def show_window(self) -> None:
-        self.showNormal()
+        if self.isMinimized():
+            self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
+            self.hide()
+        if not self.isVisible():
+            self.show()
         self.raise_()
         self.activateWindow()
+        QApplication.alert(self, 0)
 
     def hard_reload(self) -> None:
         profile = QWebEngineProfile.defaultProfile()
@@ -315,25 +436,33 @@ class NyxDesktopWindow(QMainWindow):
         self.web_view.setUrl(QUrl(self._app_url))
 
     def _on_ipc_connection(self) -> None:
-        conn = self._ipc_server.nextPendingConnection()
-        if not conn:
-            return
-        conn.waitForReadyRead(200)
-        cmd = bytes(conn.readAll()).decode("utf-8", errors="ignore").strip()
-        conn.disconnectFromServer()
-        if cmd == "show":
-            self.show_window()
-        elif cmd == "reload":
-            self.hard_reload()
-            self.show_window()
-        else:
-            self.toggle_visibility()
+        while self._ipc_server.hasPendingConnections():
+            conn = self._ipc_server.nextPendingConnection()
+            if not conn:
+                continue
+            if not conn.bytesAvailable():
+                conn.waitForReadyRead(200)
+            cmd = bytes(conn.readAll()).decode("utf-8", errors="ignore").strip()
+            if cmd == "show":
+                self.show_window()
+            elif cmd == "reload":
+                self.hard_reload()
+                self.show_window()
+            elif cmd == "ping":
+                pass
+            else:
+                self.toggle_visibility()
+            conn.write(b"ok\n")
+            conn.flush()
+            conn.waitForBytesWritten(250)
+            conn.disconnectFromServer()
 
     def closeEvent(self, event) -> None:
         if not self._force_quit and self._tray is not None and self._tray.isVisible():
             event.ignore()
             self.hide()
             return
+        self._cleanup_ipc()
         self._cleanup_backend()
         super().closeEvent(event)
 
@@ -341,8 +470,19 @@ class NyxDesktopWindow(QMainWindow):
         self._force_quit = True
         if self._tray is not None:
             self._tray.hide()
+        self._cleanup_ipc()
         self._cleanup_backend()
         QApplication.quit()
+
+    def _cleanup_ipc(self) -> None:
+        try:
+            self._ipc_server.close()
+        except Exception:
+            pass
+        try:
+            PID_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     def _cleanup_backend(self) -> None:
         if self._spawned_backend is not None and self._spawned_backend.poll() is None:
@@ -351,6 +491,60 @@ class NyxDesktopWindow(QMainWindow):
             except Exception:
                 self._spawned_backend.terminate()
             self._spawned_backend = None
+
+
+def _launch_detached(args: argparse.Namespace) -> int:
+    """Spawn desktop_app.py in a detached session and wait until IPC responds."""
+    logs_dir = PROJECT_ROOT / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / "desktop_app_process.log"
+
+    cmd = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--action",
+        args.action,
+    ]
+    if args.no_autostart:
+        cmd.append("--no-autostart")
+
+    with open(log_path, "ab+") as log_f:
+        start_offset = log_f.tell()
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(PROJECT_ROOT),
+            stdin=subprocess.DEVNULL,
+            stdout=log_f,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+    deadline = time.monotonic() + 30.0
+    while time.monotonic() < deadline:
+        if send_single_instance_command("ping", timeout_s=0.3, recover_unresponsive=False):
+            print(f"NyxAI Desktop App started (PID {proc.pid}).")
+            return 0
+        ret = proc.poll()
+        if ret is not None:
+            try:
+                with open(log_path, "rb") as log_f:
+                    log_f.seek(start_offset)
+                    output = log_f.read().decode("utf-8", errors="replace").strip()
+            except OSError:
+                output = ""
+            print(
+                f"[NyxAI] Desktop App exited unexpectedly (code {ret}).",
+                file=sys.stderr,
+            )
+            if output:
+                print(output[-2000:], file=sys.stderr)
+            return ret if ret != 0 else 1
+        time.sleep(0.2)
+
+    print(
+        f"NyxAI Desktop App launched (PID {proc.pid}); still initializing. Check {log_path} if needed."
+    )
+    return 0
 
 
 def main() -> int:
@@ -366,16 +560,26 @@ def main() -> int:
         action="store_true",
         help="Do not auto-start local FastAPI backend if offline.",
     )
+    parser.add_argument(
+        "--detach",
+        action="store_true",
+        help="Launch desktop window in background and return once ready.",
+    )
     args = parser.parse_args()
+
+    # Focus/toggle existing responsive instance (or clean up a frozen/stale one)
+    if send_single_instance_command(args.action):
+        if args.detach:
+            print("NyxAI Desktop App is already running (window focused).")
+        return 0
+
+    if args.detach:
+        return _launch_detached(args)
 
     app = QApplication(sys.argv)
     app.setApplicationName("NyxAI")
     app.setDesktopFileName("nyxai")
     app.setQuitOnLastWindowClosed(False)
-
-    # Focus/toggle existing instance if already running
-    if send_single_instance_command(args.action):
-        return 0
 
     if args.no_autostart:
         resolved_url, spawned_backend = APP_URL, None

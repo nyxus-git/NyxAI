@@ -132,3 +132,72 @@ class TestDesktopController:
         with patch("httpx.AsyncClient.get", side_effect=httpx.ConnectError("Connection refused")):
             code = await check_status()
             assert code == 1
+
+
+class TestDesktopAppIPC:
+    """Validate single-instance IPC ACK & frozen-instance cleanup in desktop_app.py."""
+
+    def test_send_single_instance_command_returns_true_on_ack(self, tmp_path: Path):
+        """Responsive instance replying 'ok' should return True."""
+        import socket
+        import threading
+        from apps.desktop import desktop_app
+
+        sock_path = tmp_path / "ipc.sock"
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        srv.bind(str(sock_path))
+        srv.listen(1)
+
+        received: list[bytes] = []
+
+        def serve_once():
+            conn, _ = srv.accept()
+            with conn:
+                received.append(conn.recv(64))
+                conn.sendall(b"ok\n")
+
+        t = threading.Thread(target=serve_once, daemon=True)
+        t.start()
+
+        try:
+            with patch.object(desktop_app, "SOCKET_PATH", sock_path):
+                ok = desktop_app.send_single_instance_command("show", timeout_s=1.0)
+            assert ok is True
+            t.join(timeout=1.0)
+            assert received == [b"show\n"]
+        finally:
+            srv.close()
+
+    def test_send_single_instance_command_cleans_up_unresponsive_socket(self, tmp_path: Path):
+        """Frozen instance (accepting socket without ACK) must trigger recovery and return False."""
+        import socket
+        import threading
+        from apps.desktop import desktop_app
+
+        sock_path = tmp_path / "hung.sock"
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        srv.bind(str(sock_path))
+        srv.listen(1)
+        stop_event = threading.Event()
+
+        def hold_without_reply():
+            conn, _ = srv.accept()
+            with conn:
+                conn.recv(64)
+                stop_event.wait(2.0)
+
+        t = threading.Thread(target=hold_without_reply, daemon=True)
+        t.start()
+
+        try:
+            with (
+                patch.object(desktop_app, "SOCKET_PATH", sock_path),
+                patch.object(desktop_app, "_find_desktop_app_pids", return_value=[]),
+            ):
+                ok = desktop_app.send_single_instance_command("show", timeout_s=0.15)
+            assert ok is False
+            assert not sock_path.exists()
+        finally:
+            stop_event.set()
+            srv.close()
+            t.join(timeout=1.0)
