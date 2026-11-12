@@ -1,260 +1,187 @@
-# NyxAI 🌙
+# NyxAI
 
-> Local-first AI companion and intelligent desktop agent for Linux.
-
-NyxAI is a privacy-focused, fully local AI desktop application built for Arch / EndeavourOS (KDE Plasma, GNOME, XFCE, Hyprland) and any Linux distro.
-It combines conversational AI, an animated girl companion (from your photo, 3D `.vrm`/`.glb`, or stylized avatar), voice interaction, desktop automation, and long-term memory —
-running entirely on your hardware with no cloud dependency.
+Local-first AI companion, voice assistant, and desktop agent for Linux powered by [Ollama](https://ollama.ai).
 
 ---
 
-## What NyxAI Can Do
+## Prerequisites
 
-- 👧 **Animated Girl Companion** — upload any portrait photo (60 FPS eye blinking & lip-sync), load a 3D `.vrm`/`.glb` model, or use the stylized companion
-- 🖥️ **Dedicated Linux Desktop App** — native PyQt6 WebEngine window + System Tray + Application Menu launcher across KDE Plasma, GNOME, XFCE, and Wayland/X11
-- 🗣️ **Multilingual voice chat** — English, Hindi, Marathi, Hinglish — speak naturally, get a spoken response with synchronized mouth animation
-- 🤖 **Desktop agent** — open apps, search the web, manage files, check system stats, set task reminders
-- 🧠 **4-layer memory** — remembers facts about you across all sessions (short-term, long-term, episodic, semantic)
-- 🔒 **Privacy-first** — everything runs locally, nothing leaves your machine
-- 🎛️ **Fine-tunable** — LoRA/QLoRA training pipeline included for personalizing the model
+- **Linux** (Arch / EndeavourOS, Debian / Ubuntu, or Fedora)
+- **Python** 3.11+
+- **Node.js & npm** (for the Companion UI)
+- **[Ollama](https://ollama.com/download)** (installed automatically on Arch via `install.sh`, or install manually on other distros)
 
 ---
 
-## Hardware
+## Installation
 
-| Component | Spec |
-|-----------|------|
-| CPU | Intel Core i7-14700HX |
-| GPU | NVIDIA RTX 4050 Laptop (6 GB VRAM) |
-| RAM | 16 GB |
-| OS | EndeavourOS / Arch Linux |
-| WM | Hyprland (Wayland) |
-
----
-
-## Recommended Model
-
-**`qwen2.5:3b`** — ~2 GB VRAM, excellent multilingual support (EN/HI/MR), native function calling.
+### One-Command Setup (Recommended)
 
 ```bash
-ollama pull qwen2.5:3b
+git clone https://github.com/nyxus-git/NyxAI.git
+cd NyxAI
+./scripts/install.sh
 ```
 
-Swap the model without touching any code:
+`install.sh` sets up system dependencies, creates `.venv`, creates `.env`, pulls `qwen2.5:3b` via Ollama, builds the Companion UI, installs the `nyxai` launcher (`~/.local/bin/nyxai`) and desktop menu entry, and configures `systemd` user units.
+
+Useful installer flags:
+
+```bash
+./scripts/install.sh -y                  # Non-interactive install with defaults
+./scripts/install.sh --model=llama3.2:3b # Use a different Ollama model
+./scripts/install.sh --skip-model        # Skip pulling the Ollama model
+./scripts/install.sh --enable-service    # Enable nyxai-core service at login
+```
+
+### Manual / Minimal Setup (Backend & CLI only)
+
+```bash
+git clone https://github.com/nyxus-git/NyxAI.git
+cd NyxAI
+
+cp .env.example .env
+make setup
+make pull-model
+```
+
+---
+
+## User Guide
+
+### Launch the Desktop App
+
+If you ran `./scripts/install.sh`, open **NyxAI** from your Application Menu or run:
+
+```bash
+nyxai
+```
+
+Or launch directly from the repo:
+
+```bash
+make app
+```
+
+Inside the app's top bar, you can switch between the stylized companion, upload a portrait photo (**Upload Girl Photo**), or load a 3D `.vrm`/`.glb` character.
+
+---
+
+### Run in Development Mode
+
+Start both the backend API (`http://127.0.0.1:8000`) and Companion Web UI (`http://127.0.0.1:5173`) together:
+
+```bash
+./scripts/run.sh dev
+```
+
+Or run them separately:
+
+```bash
+make dev   # FastAPI backend (API docs at http://127.0.0.1:8000/docs)
+make ui    # Companion Web UI dev server
+```
+
+---
+
+### Voice Chat (Push-to-Talk CLI)
+
+Ensure Ollama and the backend (`make dev`) are running, then start voice chat:
+
+```bash
+make voice             # Agent mode (with desktop/system tools)
+make voice-companion   # Companion mode (chat only)
+```
+
+Press **Enter** to start recording, press **Enter** again to stop and send, and press **Ctrl+C** to exit.
+
+Optional CLI flags (for CPU-only systems, custom Whisper size, or disabling TTS):
+
+```bash
+.venv/bin/python scripts/voice_chat.py --mode agent --device cpu --no-tts
+```
+
+| Flag | Options | Description |
+|------|---------|-------------|
+| `--mode` | `agent`, `companion` | Enable tools (`agent`) or chat only (`companion`) |
+| `--whisper` | `tiny`, `base`, `small`, `medium` | Whisper STT model size (default: `small`) |
+| `--device` | `cuda`, `cpu` | Whisper inference device (default: `cuda`) |
+| `--language` | `auto`, `en`, `hi`, `mr` | Speech recognition language (default: `auto`) |
+| `--no-tts` | — | Disable spoken audio output |
+
+---
+
+### API Usage
+
+Check server health:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Send a chat message:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello NyxAI!"}'
+```
+
+---
+
+### Background Services & Desktop Shortcuts
+
+Manage NyxAI background `systemd` user services:
+
+```bash
+nyxai start    # or: make service-start
+nyxai status   # or: make service-status
+nyxai logs     # or: make service-logs
+nyxai stop     # or: make service-stop
+```
+
+Optional global shortcut to toggle the app window (ensure `~/.local/bin` is in your `PATH`):
+
+- **KDE Plasma / GNOME:** Bind a custom shortcut to `~/.local/bin/nyxai toggle`
+- **Hyprland** (`~/.config/hypr/hyprland.conf`):
+  ```ini
+  bind = SUPER, J, exec, ~/.local/bin/nyxai toggle
+  bind = SUPER, SPACE, exec, ~/.local/bin/nyxai ptt
+  ```
+
+---
+
+## Configuration
+
+Key settings in `.env`:
+
+```env
+HOST=127.0.0.1
+PORT=8000
+
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:3b
+
+DEFAULT_LANGUAGE=auto   # auto, en, hi, mr
+
+WHISPER_MODEL=small
+WHISPER_DEVICE=cuda     # set to cpu if no NVIDIA GPU
+TTS_ENGINE=kokoro
+```
+
+Override the model for a single dev run:
+
 ```bash
 OLLAMA_MODEL=llama3.2:3b make dev
 ```
 
 ---
 
-## Quick Start
-
-### Prerequisites
-- [Ollama](https://ollama.ai) installed and running
-- Python 3.11+
-
-### One-Command Setup (Arch / EndeavourOS / Any Linux)
-
-```bash
-git clone https://github.com/nyxus-git/NyxAI.git
-cd NyxAI
-
-# Installs system deps, .venv, Ollama + qwen2.5:3b model, builds UI & installs Desktop App
-./scripts/install.sh
-
-# Launch the dedicated NyxAI desktop application (or open "NyxAI" from your App Menu)
-nyxai
-```
-
-To use your own photo of a girl (or a 3D `.vrm`/`.glb` character), click **Upload Girl Photo** inside the app's top bar.
-
-### Test It
-
-```bash
-# Health check
-curl http://127.0.0.1:8000/health
-
-# Chat in English
-curl -X POST http://127.0.0.1:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello NyxAI!"}'
-
-# Chat in Hinglish
-curl -X POST http://127.0.0.1:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hey Nyx! आज काय plan आहे?"}'
-
-# Interactive API docs
-xdg-open http://127.0.0.1:8000/docs
-```
-
-### Run Tests
+## Running Tests
 
 ```bash
 make test
-# All tests pass — no GPU or Ollama required
 ```
-
----
-
-## Architecture
-
-```
-User (Voice / UI / curl)
-        │
-        ▼
-  FastAPI Backend (:8000)
-  ┌─────────────────────────────────────────┐
-  │  /health  /chat  /agent  /voice  /memory│
-  │                                         │
-  │  NyxAgent ←──── ToolRegistry            │
-  │      │               │                  │
-  │      │          [battery, browser,       │
-  │      │           files, tasks,           │
-  │      │           planning, system]       │
-  │      │                                  │
-  │  MemoryService                          │
-  │      ├── ShortTermMemory  (SQLite)       │
-  │      ├── LongTermMemory   (SQLite)       │
-  │      ├── EpisodicMemory   (SQLite)       │
-  │      └── SemanticMemory   (ChromaDB)     │
-  │                                         │
-  │  LLMProvider (abstract)                 │
-  │      └── OllamaProvider                 │
-  └──────────────┬──────────────────────────┘
-                 │ HTTP REST
-                 ▼
-           Ollama (:11434)
-                 │
-                 ▼
-           qwen2.5:3b  (RTX 4050, local GPU)
-
-Voice Pipeline (separate service):
-  Mic → faster-whisper (CUDA) → text → NyxAgent → Kokoro TTS / pyttsx3 → Speaker
-```
-
----
-
-## Project Structure
-
-```
-NyxAI/
-├── api/                    # FastAPI backend
-│   └── app/
-│       ├── main.py         # App entry point + lifespan
-│       ├── config.py       # Pydantic Settings
-│       ├── routers/        # HTTP endpoints
-│       ├── services/       # Business logic
-│       └── schemas/        # Request/response models
-│
-├── core/                   # Shared AI logic
-│   ├── brain/
-│   │   ├── llm.py          # Abstract LLMProvider interface
-│   │   ├── prompts.py      # NyxAI personality & system prompt
-│   │   ├── language.py     # Unicode-based language detection
-│   │   └── providers/
-│   │       └── ollama.py   # Ollama implementation
-│   ├── agent/
-│   │   ├── agent.py        # Agentic reasoning loop
-│   │   ├── tool_registry.py
-│   │   └── schemas.py
-│   └── memory/
-│       ├── short_term.py   # SQLite conversation history
-│       ├── long_term.py    # Persistent user facts
-│       ├── episodic.py     # Event journal
-│       └── semantic.py     # ChromaDB vector search
-│
-├── tools/                  # Agent tools
-│   ├── system/             # Battery, CPU, RAM, time
-│   ├── browser/            # Web search, open URL, read page
-│   ├── files/              # Read, list, search, move, copy, delete
-│   ├── tasks/              # Add, list, complete tasks, reminders
-│   └── planning/           # Multi-step plan creation
-│
-├── safety/                 # Permission system & command validator
-├── voice/                  # STT (faster-whisper) + TTS (Kokoro/pyttsx3)
-├── apps/companion/         # React + Vite + Tauri companion UI
-├── training/               # LoRA/QLoRA fine-tuning pipeline
-└── deployment/systemd/     # systemd user services
-```
-
----
-
-## Persistent Deployment & Desktop Integration
-
-NyxAI runs as systemd user services — no root required, auto-starts on login.
-
-### Install
-```bash
-make service-install
-```
-
-### Service Management
-```bash
-make service-start    # Start all NyxAI services
-make service-status   # Check unit states and backend health
-make service-logs     # Stream journalctl logs
-make service-stop     # Stop all services
-```
-
-### Hyprland Keybindings
-Add to `~/.config/hypr/hyprland.conf`:
-```ini
-bind = SUPER, J, exec, ~/Projects/NyxAI/scripts/run.sh toggle
-bind = SUPER, SPACE, exec, ~/Projects/NyxAI/scripts/run.sh ptt
-```
-
-### Voice Mode
-```bash
-make voice            # Push-to-talk agent mode
-make voice-companion  # Push-to-talk companion mode
-```
-
----
-
-## Fine-Tuning
-
-NyxAI includes a QLoRA training pipeline to fine-tune `qwen2.5:3b` on custom datasets.
-Designed to run within 6 GB VRAM using 4-bit quantization + gradient checkpointing.
-
-```bash
-python training/scripts/train_lora.py \
-  --model_id Qwen/Qwen2.5-3B-Instruct \
-  --data_path training/datasets/processed/train.jsonl
-```
-
----
-
-## Configuration
-
-Copy `.env.example` to `.env`:
-
-```env
-OLLAMA_MODEL=qwen2.5:3b
-OLLAMA_BASE_URL=http://localhost:11434
-LOG_LEVEL=INFO
-HOST=127.0.0.1
-PORT=8000
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.11, FastAPI, Uvicorn |
-| LLM Runtime | Ollama (`qwen2.5:3b`) |
-| HTTP Client | httpx (async) |
-| Validation | Pydantic v2 |
-| Logging | structlog |
-| STT | faster-whisper (CTranslate2, CUDA) |
-| TTS | Kokoro ONNX (EN), pyttsx3/eSpeak (HI/MR) |
-| Memory | aiosqlite + ChromaDB |
-| Fine-Tuning | HuggingFace PEFT, TRL, bitsandbytes |
-| Frontend | React, TypeScript, Vite, Three.js (`three-vrm`), MediaPipe, PyQt6-WebEngine |
-| Testing | pytest, pytest-asyncio |
-| Deployment | systemd user services |
 
 ---
 
