@@ -55,6 +55,56 @@ def generate_acknowledgment_chime(sample_rate: int = 16000) -> np.ndarray:
     return (chime * 0.25 * 32767).astype(np.int16)
 
 
+def generate_success_chime(sample_rate: int = 16000) -> np.ndarray:
+    """
+    Generate a bright, futuristic three-tone ascending chord (C5 -> E5 -> G5).
+    Total duration: ~240 ms.
+    """
+    t1 = np.linspace(0, 0.07, int(sample_rate * 0.07), endpoint=False)
+    tone1 = np.sin(2 * np.pi * 523.25 * t1) * np.exp(-t1 * 18)
+
+    t2 = np.linspace(0, 0.07, int(sample_rate * 0.07), endpoint=False)
+    tone2 = np.sin(2 * np.pi * 659.25 * t2) * np.exp(-t2 * 16)
+
+    t3 = np.linspace(0, 0.10, int(sample_rate * 0.10), endpoint=False)
+    tone3 = np.sin(2 * np.pi * 783.99 * t3) * np.exp(-t3 * 12)
+
+    chime = np.concatenate([tone1, tone2, tone3])
+    return (chime * 0.28 * 32767).astype(np.int16)
+
+
+def generate_warning_chime(sample_rate: int = 16000) -> np.ndarray:
+    """
+    Generate a distinct dual-pulse sci-fi warning tone (F#5 -> D5).
+    Total duration: ~220 ms.
+    """
+    t1 = np.linspace(0, 0.10, int(sample_rate * 0.10), endpoint=False)
+    tone1 = np.sin(2 * np.pi * 739.99 * t1) * np.exp(-t1 * 15)
+
+    gap = np.zeros(int(sample_rate * 0.02), dtype=np.float64)
+
+    t2 = np.linspace(0, 0.10, int(sample_rate * 0.10), endpoint=False)
+    tone2 = np.sin(2 * np.pi * 587.33 * t2) * np.exp(-t2 * 15)
+
+    chime = np.concatenate([tone1, gap, tone2])
+    return (chime * 0.3 * 32767).astype(np.int16)
+
+
+def generate_error_chime(sample_rate: int = 16000) -> np.ndarray:
+    """
+    Generate a low descending rejection buzz (C4 -> G3).
+    Total duration: ~180 ms.
+    """
+    t1 = np.linspace(0, 0.08, int(sample_rate * 0.08), endpoint=False)
+    tone1 = np.sin(2 * np.pi * 261.63 * t1) * np.exp(-t1 * 14)
+
+    t2 = np.linspace(0, 0.10, int(sample_rate * 0.10), endpoint=False)
+    tone2 = np.sin(2 * np.pi * 196.00 * t2) * np.exp(-t2 * 12)
+
+    chime = np.concatenate([tone1, tone2])
+    return (chime * 0.25 * 32767).astype(np.int16)
+
+
 def to_wav_bytes(audio_array: np.ndarray, sample_rate: int = 16000) -> bytes:
     """Convert int16 audio array to WAV bytes."""
     buf = io.BytesIO()
@@ -71,17 +121,26 @@ def play_chime(chime_type: str = "activation", sample_rate: int = 16000, async_p
     Play the requested chime through the default sound device.
 
     Args:
-        chime_type: "activation" or "acknowledgment".
+        chime_type: "activation", "acknowledgment", "success", "warning", or "error".
         sample_rate: Audio sampling rate (default 16000 Hz).
         async_play: If True, plays without blocking the calling thread.
     """
     try:
         import sounddevice as sd
 
-        if chime_type == "activation":
+        ctype = chime_type.lower().strip()
+        if ctype == "activation":
             audio = generate_activation_chime(sample_rate)
-        else:
+        elif ctype in ("acknowledgment", "ack"):
             audio = generate_acknowledgment_chime(sample_rate)
+        elif ctype in ("success", "done"):
+            audio = generate_success_chime(sample_rate)
+        elif ctype in ("warning", "alert"):
+            audio = generate_warning_chime(sample_rate)
+        elif ctype in ("error", "blocked"):
+            audio = generate_error_chime(sample_rate)
+        else:
+            audio = generate_activation_chime(sample_rate)
 
         sd.play(audio, samplerate=sample_rate)
         if not async_play:

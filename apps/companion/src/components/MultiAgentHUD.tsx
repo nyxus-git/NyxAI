@@ -12,12 +12,13 @@ import {
   Radio,
   RefreshCw,
   Server,
+  ShieldAlert,
   Sparkles,
   Terminal,
   Volume2,
   Zap,
 } from 'lucide-react';
-import { fetchSystemTelemetry, postQuickAction } from '../services/api';
+import { fetchSystemTelemetry, postProactiveSweep, postQuickAction } from '../services/api';
 import { SystemTelemetry } from '../types/companion';
 
 interface MultiAgentHUDProps {
@@ -49,11 +50,18 @@ export const MultiAgentHUD: React.FC<MultiAgentHUDProps> = ({ onSendMessage }) =
     setActionInProgress(action);
     setActionFeedback(null);
     try {
-      const res = await postQuickAction(action, params);
-      setActionFeedback(res.message || `${label} executed.`);
-      // Also optionally feed it to conversational chat if requested
-      if (action === 'activate_all_tasks' && onSendMessage) {
-        onSendMessage('Activate all tasks');
+      if (action === 'proactive_sweep') {
+        const res = await postProactiveSweep();
+        const remFired = (res.audit as any)?.reminders_fired ?? 0;
+        const cpuP = (res.audit as any)?.cpu_percent ?? 0;
+        setActionFeedback(`Sentinel Audit Complete: ${remFired} reminders processed, CPU at ${cpuP}%`);
+      } else {
+        const res = await postQuickAction(action, params);
+        setActionFeedback(res.message || `${label} executed.`);
+        // Also optionally feed it to conversational chat if requested
+        if (action === 'activate_all_tasks' && onSendMessage) {
+          onSendMessage('Activate all tasks');
+        }
       }
     } catch (err: any) {
       setActionFeedback(err.message || 'Execution error');
@@ -257,6 +265,25 @@ export const MultiAgentHUD: React.FC<MultiAgentHUDProps> = ({ onSendMessage }) =
             <div className="hud-action-content">
               <span className="hud-action-name">Terminal: git status</span>
               <span className="hud-action-desc">Sandboxed shell command</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="hud-action-card"
+            disabled={actionInProgress !== null}
+            onClick={() => handleAction('proactive_sweep', 'Sentinel Health Sweep')}
+          >
+            <div className="hud-action-icon">
+              {actionInProgress === 'proactive_sweep' ? (
+                <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+              ) : (
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+              )}
+            </div>
+            <div className="hud-action-content">
+              <span className="hud-action-name">Sentinel Sweep</span>
+              <span className="hud-action-desc">Reminders, thermals & power audit</span>
             </div>
           </button>
         </div>

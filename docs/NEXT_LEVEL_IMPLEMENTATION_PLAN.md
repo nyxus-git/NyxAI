@@ -290,6 +290,25 @@ Domain Classifier (Prompt Router)
 - [x] Expand multilingual conversational fine-tuning dataset (`multilingual_conversations.json` & `train.jsonl` with 122 validated dialogue records) covering all new tools in English, Hindi, Marathi, and Hinglish.
 - [x] Expanded test suite: 250 unit and integration tests passing with zero errors.
 
+### Phase 8: Autonomous Proactive Intelligence & Unified CLI (Completed)
+- [x] Implement `ProactiveSentinel` (`core/agent/proactive.py`) background intelligence monitor:
+  - Active Reminder Dispatcher: Automatic status updates, desktop notifications, spoken voice alerts, and WebSocket event broadcasting.
+  - Battery Health Guardian: Discharging warning at 15% and critical alerts at 8%.
+  - CPU/Thermal Sentinel: Sustained high-load detection (>95%).
+  - Pub-Sub Real-time Event Hub.
+- [x] Synthesize futuristic mathematical acoustic soundscape (`voice/wakeword/chime.py`):
+  - Added `activation`, `acknowledgment`, `success`, `warning`, and `error` synthesized waveforms with zero external audio assets.
+- [x] Modern Unified Linux CLI (`apps/cli/main.py` & `./nyx`):
+  - Direct execution: `nyx "check battery and disk space"`
+  - Conversational terminal REPL: `nyx chat`
+  - JARVIS master routine: `nyx routine` / `nyx jarvis`
+  - Hardware diagnostics & swarm view: `nyx system`
+  - Desktop daemon controls: `nyx daemon [status|toggle-ui]`
+  - Registered `nyx` in `pyproject.toml` console scripts.
+- [x] Integrated `ProactiveSentinel` in `api/app/main.py`, added `GET /system/proactive/status` and `POST /system/proactive/sweep` in `api/app/routers/system.py`.
+- [x] Added "Sentinel Sweep" action to Companion UI Master Command Deck (`MultiAgentHUD.tsx`).
+- [x] Test suite expanded to 278 passed tests with zero failures.
+
 ---
 
 ## 9. Technology Additions Summary

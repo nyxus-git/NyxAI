@@ -34,6 +34,7 @@ from api.app.routers import voice as voice_router
 from api.app.services.avatar_service import ensure_avatar_assets_dir
 from api.app.services.chat_service import ChatService
 from core.agent.agent import NyxAgent
+from core.agent.proactive import ProactiveSentinel
 from core.agent.supervisor import NyxSupervisor
 from core.agent.tool_registry import build_default_registry
 from core.brain.providers.ollama import OllamaProvider
@@ -212,7 +213,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         agent=supervisor,
     )
 
-    # Step 8: Store on app.state (accessible in all route handlers)
+    # Step 8: Initialize Proactive Sentinel
+    proactive_sentinel = ProactiveSentinel(
+        db_path=settings.memory_db_path,
+        poll_interval=15.0,
+        tts_speaker=tts_speaker,
+    )
+
+    # Step 9: Store on app.state (accessible in all route handlers)
     app.state.settings = settings
     app.state.llm_provider = llm_provider
     app.state.memory_db = memory_db
@@ -224,11 +232,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.tool_registry = tool_registry
     app.state.transcriber = transcriber
     app.state.tts_speaker = tts_speaker
+    app.state.proactive_sentinel = proactive_sentinel
 
     logger.info("nyxai_ready", message="NyxAI backend is ready to receive requests.")
 
-    # Start background tasks (reminder poller + non-blocking model warmup)
-    poller_task = asyncio.create_task(reminder_poller(settings.memory_db_path))
+    # Start background tasks (proactive sentinel + non-blocking model warmup)
+    sentinel_task = asyncio.create_task(proactive_sentinel.run_loop())
     warmup_task = asyncio.create_task(_warmup_pipeline(app))
 
     yield  # ← Application runs here
@@ -236,9 +245,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown
     logger.info("nyxai_shutting_down")
     warmup_task.cancel()
-    poller_task.cancel()
+    sentinel_task.cancel()
     try:
-        await asyncio.gather(warmup_task, poller_task, return_exceptions=True)
+        await asyncio.gather(warmup_task, sentinel_task, return_exceptions=True)
     except Exception:
         pass
     await llm_provider.close()

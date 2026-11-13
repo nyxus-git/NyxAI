@@ -435,6 +435,76 @@ engine.runAndWait()
         return "pyttsx3/espeak-ng"
 
 
+# High-Quality Neural Female Speaker (Hindi, Marathi, English)
+
+
+class EdgeTTSSpeaker(TTSProvider):
+    """
+    High-fidelity Neural Female TTS provider using Edge-TTS.
+    Provides human-like, warm female voices for Hindi, Marathi, and English.
+    """
+
+    VOICE_MAP = {
+        "hi": "hi-IN-SwaraNeural",
+        "mr": "mr-IN-AarohiNeural",
+        "en-in": "en-IN-NeerjaExpressiveNeural",
+        "en": "en-US-JennyNeural",
+    }
+
+    def __init__(self, fallback: TTSProvider | None = None) -> None:
+        self._fallback = fallback
+
+    def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
+        if not text.strip():
+            return b""
+
+        import asyncio
+        import concurrent.futures
+        import io
+        import edge_tts
+        import soundfile as sf
+
+        target_voice = voice or self.VOICE_MAP.get(language.lower(), self.VOICE_MAP.get("hi" if language == "hi" else "en"))
+
+        async def _run_edge() -> bytes:
+            communicate = edge_tts.Communicate(text, target_voice)
+            mp3_bytes = b""
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    mp3_bytes += chunk["data"]
+            if not mp3_bytes:
+                return b""
+            data, sr = sf.read(io.BytesIO(mp3_bytes))
+            return _float32_to_wav_bytes(data, sr)
+
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    return pool.submit(lambda: asyncio.run(_run_edge())).result(timeout=12.0)
+            else:
+                return asyncio.run(_run_edge())
+        except Exception as e:
+            logger.warning("edge_tts_failed_fallback", error=str(e), language=language)
+            if self._fallback:
+                return self._fallback.synthesize(text, language=language, voice=voice)
+            return b""
+
+    def speak(self, text: str, language: str = "en") -> None:
+        wav = self.synthesize(text, language=language)
+        if wav:
+            play_wav_bytes(wav)
+        elif self._fallback:
+            self._fallback.speak(text, language=language)
+
+    def get_engine_name(self) -> str:
+        return "edge-tts/neural-female"
+
+
 # Smart Router — NyxTTSSpeaker
 
 
@@ -443,34 +513,38 @@ class NyxTTSSpeaker(TTSProvider):
     The main TTS provider for NyxAI.
 
     Automatically routes to the best available TTS engine based on language:
-      - English  → KokoroSpeaker (high quality, natural voice)
-      - Hindi    → Pyttsx3Speaker (offline multilingual support)
-      - Marathi  → Pyttsx3Speaker
-      - Other    → KokoroSpeaker (English fallback)
-
-    This is the class to inject everywhere. It hides the routing complexity.
+      - Hindi/Marathi → EdgeTTSSpeaker (Swara/Aarohi neural female voice) with pyttsx3 fallback
+      - English       → KokoroSpeaker (af_heart natural female) or EdgeTTSSpeaker
+      - Other         → KokoroSpeaker
 
     Args:
         kokoro_voice: Kokoro voice name for English TTS.
         tts_speed: Speech speed multiplier (applies to Kokoro).
+        use_edge_neural: Whether to route Hindi/Marathi to neural female voices.
     """
 
     def __init__(
         self,
         kokoro_voice: str = "af_heart",
         tts_speed: float = 1.0,
+        use_edge_neural: bool = True,
     ) -> None:
         self._kokoro = KokoroSpeaker(voice=kokoro_voice, speed=tts_speed)
         self._pyttsx3 = Pyttsx3Speaker()
+        self._use_edge = use_edge_neural
+        self._edge_tts = EdgeTTSSpeaker(fallback=self._pyttsx3)
 
         logger.info(
             "nyx_tts_speaker_initialized",
             kokoro_voice=kokoro_voice,
             speed=tts_speed,
+            use_edge_neural=use_edge_neural,
         )
 
     def _get_provider(self, language: str) -> TTSProvider:
         """Select the appropriate TTS provider for the given language."""
+        if getattr(self, "_use_edge", False) and language in _PYTTSX3_LANGUAGES:
+            return self._edge_tts
         if language in _PYTTSX3_LANGUAGES:
             return self._pyttsx3
         return self._kokoro

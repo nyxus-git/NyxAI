@@ -192,4 +192,17 @@ export async function postQuickAction(
   return (await res.json()) as QuickActionResult;
 }
 
+export async function postProactiveSweep(): Promise<{ status: string; audit: Record<string, unknown> }> {
+  const res = await fetch(`${API_BASE}/system/proactive/sweep`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? 'Proactive sweep failed');
+  }
+  return await res.json();
+}
+
+
 

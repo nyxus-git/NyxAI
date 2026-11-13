@@ -75,6 +75,12 @@ ACTIVE_AGENTS = [
         status="ready",
         role="Web research, DuckDuckGo knowledge search, and page summarization",
     ),
+    AgentTelemetryInfo(
+        id="proactive_agent",
+        name="ProactiveAgent",
+        status="active",
+        role="Autonomous sentinel: system health guardian, reminder dispatcher, and scheduled proactive alerts",
+    ),
 ]
 
 
@@ -160,4 +166,41 @@ async def execute_quick_action(request: Request, body: QuickActionRequest) -> Qu
         message=result.display_text or ("Action executed successfully." if result.success else "Action failed."),
         data=result.data or {},
     )
+
+
+@router.get(
+    "/proactive/status",
+    summary="Get autonomous ProactiveSentinel health and operational status",
+)
+async def get_proactive_status(request: Request) -> dict[str, Any]:
+    """Retrieve sentinel monitoring state, poll interval, and active alerts."""
+    sentinel = getattr(request.app.state, "proactive_sentinel", None)
+    if not sentinel:
+        return {"status": "disabled", "message": "ProactiveSentinel is not running."}
+
+    return {
+        "status": "active",
+        "poll_interval": sentinel.poll_interval,
+        "warned_low_battery": sentinel._warned_low_battery,
+        "warned_critical_battery": sentinel._warned_critical_battery,
+        "subscribers_count": len(sentinel._subscribers),
+    }
+
+
+@router.post(
+    "/proactive/sweep",
+    summary="Trigger an immediate on-demand sweep of all proactive sentinel checks",
+)
+async def trigger_proactive_sweep(request: Request) -> dict[str, Any]:
+    """Force an audit sweep for due reminders, battery limits, and thermal loads."""
+    sentinel = getattr(request.app.state, "proactive_sentinel", None)
+    if not sentinel:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ProactiveSentinel is not available.",
+        )
+
+    audit_result = await sentinel.run_single_audit()
+    return {"status": "ok", "audit": audit_result}
+
 

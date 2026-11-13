@@ -321,3 +321,27 @@ class TestPushToTalkListener:
             frame_count = wf.getnframes()
             # 0.5 seconds * 16000 Hz = 8000 frames
             assert abs(frame_count - 8000) < 100  # Allow small tolerance
+
+
+class TestEdgeTTSSpeaker:
+    """Tests for EdgeTTSSpeaker neural female TTS."""
+
+    def test_empty_text_returns_empty_bytes(self) -> None:
+        from voice.tts.speaker import EdgeTTSSpeaker
+        speaker = EdgeTTSSpeaker()
+        assert speaker.synthesize("   ") == b""
+
+    def test_voice_mapping_contains_expected_female_voices(self) -> None:
+        from voice.tts.speaker import EdgeTTSSpeaker
+        assert "hi-IN-SwaraNeural" in EdgeTTSSpeaker.VOICE_MAP.values()
+        assert "mr-IN-AarohiNeural" in EdgeTTSSpeaker.VOICE_MAP.values()
+
+    def test_edge_tts_routing_in_nyx_speaker(self) -> None:
+        from voice.tts.speaker import EdgeTTSSpeaker, NyxTTSSpeaker
+        speaker = NyxTTSSpeaker(use_edge_neural=True)
+        provider_hi = speaker._get_provider("hi")
+        assert isinstance(provider_hi, EdgeTTSSpeaker)
+
+        provider_en = speaker._get_provider("en")
+        assert provider_en is speaker._kokoro
+
