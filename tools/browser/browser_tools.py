@@ -81,6 +81,38 @@ WEB_SEARCH_DEF = ToolDefinition(
     category="browser",
 )
 
+DEEP_SEARCH_DEF = ToolDefinition(
+    name="deep_search",
+    description=(
+        "Perform a direct knowledge search using DuckDuckGo Knowledge API without opening a browser. "
+        "Retrieves factual abstracts, explanations, and related topics to answer questions immediately."
+    ),
+    parameters={
+        "query": ToolParameter(
+            type="string",
+            description="The search topic or question (e.g. 'Arch Linux release cycle', 'Python asyncio').",
+            required=True,
+        ),
+    },
+    category="browser",
+)
+
+SUMMARIZE_WEBPAGE_DEF = ToolDefinition(
+    name="summarize_webpage",
+    description=(
+        "Fetch and summarize the core contents of a webpage or article into structured key points. "
+        "Use when user wants an executive briefing of a URL."
+    ),
+    parameters={
+        "url": ToolParameter(
+            type="string",
+            description="The full HTTP/HTTPS URL of the article or website to summarize.",
+            required=True,
+        ),
+    },
+    category="browser",
+)
+
 
 # Tool Implementations
 
@@ -234,3 +266,104 @@ def read_webpage(url: str) -> ToolResult:
             success=False,
             error=f"Failed to read webpage: {str(e)}",
         )
+
+
+async def deep_search(query: str) -> ToolResult:
+    """
+    Query DuckDuckGo Instant Knowledge API to return factual answers directly.
+    """
+    clean_q = query.strip()
+    if not clean_q:
+        return ToolResult(tool_name="deep_search", success=False, error="Query cannot be empty.")
+
+    logger.info("tool_deep_search", query=clean_q[:80])
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://api.duckduckgo.com/",
+                params={"q": clean_q, "format": "json", "no_html": "1", "skip_disambig": "1"},
+                headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) NyxAI/1.0"},
+            )
+            if resp.status_code != 200:
+                return ToolResult(
+                    tool_name="deep_search",
+                    success=False,
+                    error=f"Search service returned {resp.status_code}",
+                )
+
+            data = resp.json()
+            abstract = data.get("AbstractText") or data.get("Abstract") or ""
+            heading = data.get("Heading") or clean_q
+            source_url = data.get("AbstractURL") or ""
+
+            related = []
+            for item in data.get("RelatedTopics", []):
+                if isinstance(item, dict) and "Text" in item:
+                    related.append({
+                        "text": item.get("Text", ""),
+                        "url": item.get("FirstURL", ""),
+                    })
+
+            if not abstract and related:
+                abstract = related[0]["text"]
+                source_url = source_url or related[0]["url"]
+
+            summary = f"**{heading}**\n\n{abstract}" if abstract else f"No direct instant summary found for '{clean_q}'."
+            if source_url:
+                summary += f"\n\nSource: {source_url}"
+
+            return ToolResult(
+                tool_name="deep_search",
+                success=True,
+                data={
+                    "query": clean_q,
+                    "heading": heading,
+                    "abstract": abstract,
+                    "source_url": source_url,
+                    "related_count": len(related),
+                },
+                display_text=summary,
+            )
+    except Exception as e:
+        logger.warning("deep_search_failed", query=clean_q, error=str(e))
+        return ToolResult(tool_name="deep_search", success=False, error=str(e))
+
+
+async def summarize_webpage(url: str) -> ToolResult:
+    """
+    Fetch and summarize an article or webpage.
+    """
+    clean_url = url.strip()
+    if not clean_url.startswith(("http://", "https://")):
+        return ToolResult(tool_name="summarize_webpage", success=False, error="URL must start with http:// or https://")
+
+    logger.info("tool_summarize_webpage", url=clean_url[:80])
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) NyxAI/1.0"}
+            resp = await client.get(clean_url, headers=headers)
+            resp.raise_for_status()
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+            title = soup.title.string.strip() if soup.title and soup.title.string else clean_url
+
+            for element in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                element.extract()
+
+            paragraphs = [p.get_text().strip() for p in soup.find_all("p") if len(p.get_text().strip()) > 40]
+            lead_text = " ".join(paragraphs[:6])[:3000]
+
+            summary = f"### Summary: {title}\n\n"
+            summary += f"{lead_text}\n\n"
+            summary += f"*(Extracted {len(paragraphs)} paragraph sections from {clean_url})*"
+
+            return ToolResult(
+                tool_name="summarize_webpage",
+                success=True,
+                data={"url": clean_url, "title": title, "paragraphs_count": len(paragraphs)},
+                display_text=summary,
+            )
+    except Exception as e:
+        logger.warning("summarize_webpage_failed", url=clean_url, error=str(e))
+        return ToolResult(tool_name="summarize_webpage", success=False, error=str(e))
+

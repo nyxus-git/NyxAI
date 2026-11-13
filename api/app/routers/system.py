@@ -69,6 +69,12 @@ ACTIVE_AGENTS = [
         status="ready",
         role="Unified email inbox, Telegram alerts, and Discord channels",
     ),
+    AgentTelemetryInfo(
+        id="research_agent",
+        name="ResearchAgent",
+        status="ready",
+        role="Web research, DuckDuckGo knowledge search, and page summarization",
+    ),
 ]
 
 

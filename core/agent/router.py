@@ -55,6 +55,8 @@ _BROWSER_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(search|google|duckduckgo|look up|find online|search web|search the internet)\b", re.IGNORECASE),
     re.compile(r"\b(open url|open link|open website|go to https?://|browse)\b", re.IGNORECASE),
     re.compile(r"\b(read webpage|read page|read article|summarize website|extract from url|scrape)\b", re.IGNORECASE),
+    re.compile(r"\b(research|deep search|knowledge lookup|search knowledge)\b", re.IGNORECASE),
+    re.compile(r"\b(summarize\s+(page|webpage|article|site|url))\b", re.IGNORECASE),
     re.compile(r"https?://[^\s]+", re.IGNORECASE),
 ]
 

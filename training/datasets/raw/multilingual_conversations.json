@@ -130,5 +130,353 @@
   {
     "user": "लक्षात ठेव की माझी आवडती प्रोग्रामिंग भाषा पायथन आहे.",
     "assistant": "नक्कीच! मी लक्षात ठेवेन की तुमची आवडती भाषा Python आहे."
+  },
+  {
+    "user": "Activate all tasks",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Start morning Jarvis routine",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Nyx, run master routine and check everything",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "सभी कार्य शुरू करो और सब कुछ चेक करो",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "जार्विस रूटीन चालू करो",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "सब टास्क एक्टिवेट कर दो",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "सर्व कामे सुरू करा आणि सगळं तपासा",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "सकाळचे सर्व टास्क चालू कर",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "जार्विस रूटीन सुरू करा",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Saare tasks activate kar do",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Hey Nyx, morning routine start karo aur sab check karo",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Jarvis mode activate kar do",
+    "assistant": "{\"tool\": \"activate_all_tasks\", \"arguments\": {}}"
+  },
+  {
+    "user": "Play lo-fi hip hop on YouTube",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"lo-fi hip hop\"}}"
+  },
+  {
+    "user": "Open YouTube and play Interstellar soundtrack",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"Interstellar soundtrack\"}}"
+  },
+  {
+    "user": "Search and play Beethoven on YouTube",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"Beethoven\"}}"
+  },
+  {
+    "user": "यूट्यूब पर अरिजीत सिंह के गाने बजाओ",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"अरिजीत सिंह के गाने\"}}"
+  },
+  {
+    "user": "यूट्यूब खोलो और लो-फाई गाने चलाओ",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"लो-फाई गाने\"}}"
+  },
+  {
+    "user": "यूट्यूबवर अजय-अतुलची गाणी लाव",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"अजय अतुल गाणी\"}}"
+  },
+  {
+    "user": "YouTube उघडून शांत संगीत चालू कर",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"शांत संगीत\"}}"
+  },
+  {
+    "user": "YouTube pe lofi beats play karo",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"lofi beats\"}}"
+  },
+  {
+    "user": "YouTube par coding music chala do",
+    "assistant": "{\"tool\": \"play_youtube\", \"arguments\": {\"query\": \"coding music\"}}"
+  },
+  {
+    "user": "Pause the music",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"pause\"}}"
+  },
+  {
+    "user": "Resume playback",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"play\"}}"
+  },
+  {
+    "user": "Next track",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"next\"}}"
+  },
+  {
+    "user": "Previous track",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"previous\"}}"
+  },
+  {
+    "user": "Turn the volume up",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"volume_up\"}}"
+  },
+  {
+    "user": "Volume down please",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"volume_down\"}}"
+  },
+  {
+    "user": "गाना रोक दो",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"pause\"}}"
+  },
+  {
+    "user": "संगीत चालू करो",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"play\"}}"
+  },
+  {
+    "user": "आवाज बढ़ाओ",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"volume_up\"}}"
+  },
+  {
+    "user": "अगला गाना चलाओ",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"next\"}}"
+  },
+  {
+    "user": "गाणं थांबव",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"pause\"}}"
+  },
+  {
+    "user": "आवाज वाढव",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"volume_up\"}}"
+  },
+  {
+    "user": "पुढचं गाणं लाव",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"next\"}}"
+  },
+  {
+    "user": "Music pause kar do",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"pause\"}}"
+  },
+  {
+    "user": "Volume thoda badha do",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"volume_up\"}}"
+  },
+  {
+    "user": "Next song play karo",
+    "assistant": "{\"tool\": \"control_media\", \"arguments\": {\"action\": \"next\"}}"
+  },
+  {
+    "user": "Run git status in terminal",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"git status\"}}"
+  },
+  {
+    "user": "Check disk space with df -h in terminal",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"df -h\"}}"
+  },
+  {
+    "user": "List files in terminal",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"ls -la\"}}"
+  },
+  {
+    "user": "टर्मिनल में गिट स्टेटस चेक करो",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"git status\"}}"
+  },
+  {
+    "user": "टर्मिनल पर डिस्क स्पेस df -h चलाओ",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"df -h\"}}"
+  },
+  {
+    "user": "टर्मिनलमध्ये git status चालवून दाखव",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"git status\"}}"
+  },
+  {
+    "user": "टर्मिनलवर डिस्क जागा तपासा",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"df -h\"}}"
+  },
+  {
+    "user": "Terminal me git status run karo",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"git status\"}}"
+  },
+  {
+    "user": "Terminal par df -h command execute karo",
+    "assistant": "{\"tool\": \"execute_terminal_command\", \"arguments\": {\"command\": \"df -h\"}}"
+  },
+  {
+    "user": "Check my unread emails",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Do I have any new mails?",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Check inbox for recent messages",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "मेरे नए ईमेल चेक करो",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "क्या कोई नया मेल आया है?",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "माझे नवीन ईमेल्स तपासा",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "काही नवीन ईमेल आले आहेत का?",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Mere unread emails check karo",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Koi naya mail aaya hai kya?",
+    "assistant": "{\"tool\": \"check_emails\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Check my Telegram messages",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Any new updates on Telegram?",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "टेलीग्राम के नए मैसेज चेक करो",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "टेलीग्राम पर कोई नया संदेश आया है क्या?",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "टेलिग्रामवरील नवीन मेसेज तपासा",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "टेलिग्रामवर काय नवीन आहे?",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Telegram ke messages check karo",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Telegram pe koi naya message aaya hai?",
+    "assistant": "{\"tool\": \"check_telegram\", \"arguments\": {\"limit\": 5}}"
+  },
+  {
+    "user": "Send a Discord alert: Build succeeded",
+    "assistant": "{\"tool\": \"send_discord_alert\", \"arguments\": {\"message\": \"Build succeeded\"}}"
+  },
+  {
+    "user": "Post to Discord that server is up",
+    "assistant": "{\"tool\": \"send_discord_alert\", \"arguments\": {\"message\": \"Server is up\"}}"
+  },
+  {
+    "user": "डिस्कॉर्ड पर अलर्ट भेजो: सर्वर चालू हो गया है",
+    "assistant": "{\"tool\": \"send_discord_alert\", \"arguments\": {\"message\": \"सर्वर चालू हो गया है\"}}"
+  },
+  {
+    "user": "डिस्कॉर्ड चैनल पर नोटिफिकेशन भेजो: काम पूरा हुआ",
+    "assistant": "{\"tool\": \"send_discord_alert\", \"arguments\": {\"message\": \"काम पूरा हुआ\"}}"
+  },
+  {
+    "user": "डिस्कॉर्डवर अलर्ट पाठवा: बॅकअप पूर्ण झाला आहे",
+    "assistant": "{\"tool\": \"send_discord_alert\", \"arguments\": {\"message\": \"बॅकअप पूर्ण झाला आहे\"}}"
+  },
+  {
+    "user": "Discord pe alert send karo: build pass ho gaya",
+    "assistant": "{\"tool\": \"send_discord_alert\", \"arguments\": {\"message\": \"build pass ho gaya\"}}"
+  },
+  {
+    "user": "Deep search quantum computing architectures",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"quantum computing architectures\"}}"
+  },
+  {
+    "user": "Look up how CRISPR gene editing works",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"CRISPR gene editing\"}}"
+  },
+  {
+    "user": "Research latest developments in nuclear fusion",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"nuclear fusion developments\"}}"
+  },
+  {
+    "user": "क्वांटम कंप्यूटिंग के बारे में डीप सर्च करो",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"क्वांटम कंप्यूटिंग\"}}"
+  },
+  {
+    "user": "ब्लॉकचेन तकनीक कैसे काम करती है खोजो",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"ब्लॉकचेन तकनीक\"}}"
+  },
+  {
+    "user": "क्वांटम कॉम्प्युटिंगबद्दल सखोल माहिती शोधा",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"क्वांटम कॉम्प्युटिंग\"}}"
+  },
+  {
+    "user": "आर्टिफिशिअल इंटेलिजन्सचा इतिहास शोधा",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"artificial intelligence history\"}}"
+  },
+  {
+    "user": "Deep search karo quantum computing ke baare me",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"quantum computing\"}}"
+  },
+  {
+    "user": "Look up how transformer models work in AI",
+    "assistant": "{\"tool\": \"deep_search\", \"arguments\": {\"query\": \"transformer models AI\"}}"
+  },
+  {
+    "user": "Summarize this article: https://en.wikipedia.org/wiki/Artificial_intelligence",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://en.wikipedia.org/wiki/Artificial_intelligence\"}}"
+  },
+  {
+    "user": "Give me a summary of https://kernel.org",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://kernel.org\"}}"
+  },
+  {
+    "user": "Summarize webpage https://archlinux.org",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://archlinux.org\"}}"
+  },
+  {
+    "user": "इस वेबपेज का सारांश दो: https://en.wikipedia.org/wiki/Artificial_intelligence",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://en.wikipedia.org/wiki/Artificial_intelligence\"}}"
+  },
+  {
+    "user": "वेबपेज समराइज करो https://python.org",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://python.org\"}}"
+  },
+  {
+    "user": "या वेबपेजचा सारांश सांगा: https://en.wikipedia.org/wiki/Artificial_intelligence",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://en.wikipedia.org/wiki/Artificial_intelligence\"}}"
+  },
+  {
+    "user": "वेबसाईट समराइज कर https://archlinux.org",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://archlinux.org\"}}"
+  },
+  {
+    "user": "Is webpage ko summarize kar do: https://en.wikipedia.org/wiki/Artificial_intelligence",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://en.wikipedia.org/wiki/Artificial_intelligence\"}}"
+  },
+  {
+    "user": "Webpage ka summary nikalo https://kernel.org",
+    "assistant": "{\"tool\": \"summarize_webpage\", \"arguments\": {\"url\": \"https://kernel.org\"}}"
   }
 ]

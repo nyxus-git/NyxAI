@@ -7,7 +7,7 @@ Wants=nyxai-core.service sound.target
 [Service]
 Type=simple
 WorkingDirectory=%h/Projects/NyxAI
-ExecStart=%h/Projects/NyxAI/.venv/bin/python apps/desktop/main.py daemon
+ExecStart=%h/Projects/NyxAI/.venv/bin/python apps/desktop/main.py daemon --hands-free
 Restart=on-failure
 RestartSec=5s
 Environment=PYTHONUNBUFFERED=1

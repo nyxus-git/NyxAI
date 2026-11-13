@@ -178,6 +178,8 @@ class HandsFreeVoiceListener:
 
     def __init__(
         self,
+        wake_words: list[str] | str | None = None,
+        wake_word: str | None = None,
         sample_rate: int = 16000,
         pause_threshold_seconds: float = 0.8,
         max_duration_seconds: float = 20.0,
@@ -191,8 +193,18 @@ class HandsFreeVoiceListener:
         from voice.wakeword.detector import WakeWordDetector
         from voice.wakeword.vad import VoiceActivityDetector
 
-        self.detector = WakeWordDetector()
+        target = wake_word or wake_words
+        words_list = [target] if isinstance(target, str) else target
+        self.detector = WakeWordDetector(wake_words=words_list)
         self.vad = VoiceActivityDetector(sample_rate=sample_rate)
+
+    def listen_turn(self, timeout_seconds: float = 2.0) -> bytes:
+        """
+        Listen for wake word with timeout and capture command.
+        Returns WAV bytes (or empty bytes b"" if no wake word was detected within timeout).
+        """
+        _, wav_bytes = self.listen_for_command(wake_timeout_seconds=timeout_seconds)
+        return wav_bytes
 
     def listen_for_command(
         self,

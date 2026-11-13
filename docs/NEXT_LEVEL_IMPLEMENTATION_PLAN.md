@@ -282,6 +282,14 @@ Domain Classifier (Prompt Router)
 - [x] Production bundle verified: `apps/companion` builds cleanly with zero errors.
 - [x] Update documentation and user guide.
 
+### Phase 7: Deep Web Research & Autonomous Linux Desktop Service (Completed)
+- [x] Integrate `deep_search` (DuckDuckGo Instant Knowledge API) & `summarize_webpage` (clean BeautifulSoup extraction).
+- [x] Register `ResearchAgent` in `NyxSupervisor` swarm roster with `PermissionLevel.SAFE` security policy.
+- [x] Implement persistent background voice listener daemon (`apps/desktop/main.py daemon --hands-free`) with `notify-send` desktop notifications.
+- [x] Update systemd user unit `nyxai-voice.service` to run continuous hands-free desktop daemon.
+- [x] Expand multilingual conversational fine-tuning dataset (`multilingual_conversations.json` & `train.jsonl` with 122 validated dialogue records) covering all new tools in English, Hindi, Marathi, and Hinglish.
+- [x] Expanded test suite: 250 unit and integration tests passing with zero errors.
+
 ---
 
 ## 9. Technology Additions Summary

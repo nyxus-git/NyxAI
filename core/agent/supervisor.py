@@ -67,6 +67,7 @@ class NyxSupervisor:
         self.comms_agent = SpecialistAgent("CommsAgent", "comms", tool_registry)
         self.system_agent = SpecialistAgent("SystemAgent", "system", tool_registry)
         self.routine_agent = SpecialistAgent("RoutineAgent", "system", tool_registry)
+        self.research_agent = SpecialistAgent("ResearchAgent", "browser", tool_registry)
 
         logger.info("nyx_supervisor_initialized")
 

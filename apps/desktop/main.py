@@ -45,6 +45,20 @@ UI_URL = os.getenv("NYXAI_UI_URL", "http://127.0.0.1:5173")
 SOCKET_PATH = Path(os.getenv("NYXAI_SOCKET_PATH", "/tmp/nyxai-desktop.sock"))
 
 
+def send_desktop_notification(title: str, message: str) -> None:
+    """Post desktop notification using notify-send if available on system."""
+    if shutil.which("notify-send"):
+        try:
+            icon_file = PROJECT_ROOT / "apps" / "companion" / "public" / "favicon.svg"
+            args = ["notify-send", "-a", "NyxAI"]
+            if icon_file.is_file():
+                args.extend(["-i", str(icon_file)])
+            args.extend([title, message[:250]])
+            subprocess.Popen(args)
+        except Exception as e:
+            logger.debug("notify_send_failed", error=str(e))
+
+
 def is_hyprland() -> bool:
     """Check if currently running under Hyprland."""
     return bool(os.getenv("HYPRLAND_INSTANCE_SIGNATURE")) and shutil.which("hyprctl") is not None
@@ -264,13 +278,113 @@ async def check_status() -> int:
     return 0 if all_healthy else 1
 
 
-async def run_daemon() -> None:
+async def run_hands_free_listener_task(
+    stop_event: asyncio.Event,
+    wake_word: str = "hey_jarvis",
+) -> None:
+    """
+    Continuous background hands-free voice task.
+    Listens for 'Hey Nyx' / 'Hey Jarvis', triggers activation chime,
+    buffers speech with VAD, sends audio to backend, speaks response,
+    and posts desktop notifications.
+    """
+    from voice.wakeword.listener import HandsFreeVoiceListener
+    from voice.tts.speaker import NyxTTSSpeaker
+
+    listener = HandsFreeVoiceListener(wake_word=wake_word, sample_rate=16000)
+    speaker = NyxTTSSpeaker()
+    loop = asyncio.get_running_loop()
+
+    logger.info("hands_free_listener_started", message=f"Listening for '{wake_word}'...")
+    send_desktop_notification("NyxAI Online", "Hands-free listening is active. Say 'Hey Nyx' anytime.")
+
+    while not stop_event.is_set():
+        try:
+            # Run blocking listen in worker thread so async loop continues
+            wav_bytes = await loop.run_in_executor(None, listener.listen_turn)
+            if not wav_bytes or stop_event.is_set():
+                continue
+
+            logger.info("hands_free_turn_captured", size_bytes=len(wav_bytes))
+
+            # Verify backend is running
+            backend_ok = False
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                try:
+                    resp = await client.get(f"{BACKEND_URL}/health")
+                    backend_ok = (resp.status_code == 200)
+                except Exception:
+                    backend_ok = False
+
+            if not backend_ok:
+                logger.warning("backend_not_ready_for_hands_free")
+                continue
+
+            from voice.stt.transcriber import WhisperTranscriber
+            transcriber = WhisperTranscriber(model="small")
+            stt_result = transcriber.transcribe(wav_bytes)
+
+            query = stt_result.text.strip()
+            if not query:
+                logger.info("empty_speech_transcription")
+                continue
+
+            logger.info("hands_free_user_query", query=query, lang=stt_result.language)
+
+            # Route to backend agent with auto_approve enabled for voice
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                chat_resp = await client.post(
+                    f"{BACKEND_URL}/chat",
+                    json={
+                        "message": query,
+                        "mode": "agent",
+                        "auto_approve": True,
+                        "voice_mode": True,
+                    },
+                )
+                chat_data = chat_resp.json()
+                reply = chat_data.get("response") or chat_data.get("reply", "")
+
+            logger.info("hands_free_agent_reply", reply_preview=reply[:80])
+
+            # Post Linux desktop notification
+            send_desktop_notification(f"NyxAI ({stt_result.language.upper()})", reply)
+
+            # Speak response
+            speaker.speak(reply, language=stt_result.language)
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("hands_free_turn_error", error=str(e))
+            await asyncio.sleep(0.5)
+
+
+async def run_listen(wake_word: str = "hey_jarvis") -> None:
+    """Run interactive hands-free listening in the foreground."""
+    configure_logging("INFO")
+    print(f"\n[NyxAI] Continuous Hands-Free Mode active. Say '{wake_word}' or 'Hey Nyx' to trigger...")
+    print("Press Ctrl+C to stop.\n")
+    stop_event = asyncio.Event()
+
+    def _sig_handler() -> None:
+        stop_event.set()
+
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, _sig_handler)
+
+    await run_hands_free_listener_task(stop_event, wake_word=wake_word)
+
+
+async def run_daemon(hands_free: bool = False, wake_word: str = "hey_jarvis") -> None:
     """
     Run persistent desktop daemon.
     Listens for IPC commands on Unix Domain Socket (/tmp/nyxai-desktop.sock).
+    If hands_free is True, also runs background openWakeWord listener.
     """
     configure_logging("INFO")
-    logger.info("nyxai_desktop_daemon_starting", socket=str(SOCKET_PATH))
+    logger.info("nyxai_desktop_daemon_starting", socket=str(SOCKET_PATH), hands_free=hands_free)
 
     if SOCKET_PATH.exists():
         try:
@@ -300,6 +414,7 @@ async def run_daemon() -> None:
                 response["success"] = success
             elif command == "status":
                 response["running"] = True
+                response["hands_free"] = hands_free
             else:
                 response["error"] = f"Unknown command: {command}"
 
@@ -314,8 +429,12 @@ async def run_daemon() -> None:
     server = await asyncio.start_unix_server(handle_client, path=str(SOCKET_PATH))
     logger.info("daemon_listening_on_socket", path=str(SOCKET_PATH))
 
+    tasks = [stop_event.wait()]
+    if hands_free:
+        tasks.append(run_hands_free_listener_task(stop_event, wake_word=wake_word))
+
     try:
-        await stop_event.wait()
+        await asyncio.gather(*tasks, return_exceptions=True)
     finally:
         server.close()
         await server.wait_closed()
@@ -331,7 +450,27 @@ def main() -> None:
     subparsers.add_parser("toggle-ui", help="Toggle or focus Companion UI (SUPER+J)")
     subparsers.add_parser("ptt", help="Trigger push-to-talk voice input (SUPER+SPACE)")
     subparsers.add_parser("status", help="Check status of all NyxAI services")
-    subparsers.add_parser("daemon", help="Run desktop daemon for IPC/shortcuts")
+
+    daemon_parser = subparsers.add_parser("daemon", help="Run desktop daemon for IPC/shortcuts")
+    daemon_parser.add_argument(
+        "--hands-free",
+        action="store_true",
+        help="Enable continuous hands-free 'Hey Nyx' wake word listening",
+    )
+    daemon_parser.add_argument(
+        "--wake-word",
+        type=str,
+        default="hey_jarvis",
+        help="Wake phrase model to use (default: hey_jarvis)",
+    )
+
+    listen_parser = subparsers.add_parser("listen", help="Run hands-free wake word listener directly in console")
+    listen_parser.add_argument(
+        "--wake-word",
+        type=str,
+        default="hey_jarvis",
+        help="Wake phrase model to use (default: hey_jarvis)",
+    )
 
     args = parser.parse_args()
 
@@ -344,7 +483,9 @@ def main() -> None:
         code = asyncio.run(check_status())
         sys.exit(code)
     elif args.command == "daemon":
-        asyncio.run(run_daemon())
+        asyncio.run(run_daemon(hands_free=args.hands_free, wake_word=args.wake_word))
+    elif args.command == "listen":
+        asyncio.run(run_listen(wake_word=args.wake_word))
     else:
         parser.print_help()
         sys.exit(1)

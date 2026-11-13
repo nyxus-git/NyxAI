@@ -102,6 +102,11 @@ TOOL_NAME_ALIASES: dict[str, str] = {
     "read_url": "read_webpage",
     "read_page": "read_webpage",
     "scrape_page": "read_webpage",
+    "search_knowledge": "deep_search",
+    "lookup": "deep_search",
+    "summarize_page": "summarize_webpage",
+    "summarize_url": "summarize_webpage",
+    "summarize_website": "summarize_webpage",
     # Files
     "read": "read_file",
     "cat": "read_file",
@@ -501,12 +506,16 @@ def build_default_registry() -> ToolRegistry:
         A ToolRegistry with all system, file, and browser tools registered.
     """
     from tools.browser.browser_tools import (
+        DEEP_SEARCH_DEF,
         OPEN_URL_DEF,
-        WEB_SEARCH_DEF,
         READ_WEBPAGE_DEF,
+        SUMMARIZE_WEBPAGE_DEF,
+        WEB_SEARCH_DEF,
+        deep_search,
         open_url,
-        web_search,
         read_webpage,
+        summarize_webpage,
+        web_search,
     )
     from tools.files.file_tools import OPEN_APPLICATION_DEF, open_application
     from tools.files.fs_tools import (
@@ -600,6 +609,8 @@ def build_default_registry() -> ToolRegistry:
     registry.register(OPEN_URL_DEF, open_url)
     registry.register(WEB_SEARCH_DEF, web_search)
     registry.register(READ_WEBPAGE_DEF, read_webpage)
+    registry.register(DEEP_SEARCH_DEF, deep_search)
+    registry.register(SUMMARIZE_WEBPAGE_DEF, summarize_webpage)
 
     # ── Task tools
     registry.register(ADD_TASK_DEF, add_task)

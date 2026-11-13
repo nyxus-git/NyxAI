@@ -36,6 +36,8 @@ TOOL_POLICY: dict[str, PermissionLevel] = {
     "read_file": PermissionLevel.SAFE,
     "search_files": PermissionLevel.SAFE,
     "read_webpage": PermissionLevel.SAFE,
+    "deep_search": PermissionLevel.SAFE,
+    "summarize_webpage": PermissionLevel.SAFE,
     "add_task": PermissionLevel.SAFE,
     "list_tasks": PermissionLevel.SAFE,
     "complete_task": PermissionLevel.SAFE,
