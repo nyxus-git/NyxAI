@@ -162,3 +162,120 @@ class PushToTalkListener:
             duration_s=round(len(audio_data) / self._sample_rate, 2),
         )
         return wav_bytes
+
+
+class HandsFreeVoiceListener:
+    """
+    Hands-free voice listener for NyxAI.
+
+    Continuous listening flow:
+      1. Listens in the background for wake words ("Hey Nyx", "Hey Jarvis") via openWakeWord (<0.5% CPU).
+      2. When wake word is detected, plays a soft futuristic activation chime.
+      3. Listens to the user's spoken instruction using Voice Activity Detection (VAD).
+      4. As soon as the user pauses for ~0.8s, automatically endpoints recording and returns WAV bytes.
+      5. Zero keyboard or mouse interaction needed.
+    """
+
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        pause_threshold_seconds: float = 0.8,
+        max_duration_seconds: float = 20.0,
+        play_chime_on_wake: bool = True,
+    ) -> None:
+        self._sample_rate = sample_rate
+        self._pause_threshold = pause_threshold_seconds
+        self._max_duration = max_duration_seconds
+        self._play_chime = play_chime_on_wake
+
+        from voice.wakeword.detector import WakeWordDetector
+        from voice.wakeword.vad import VoiceActivityDetector
+
+        self.detector = WakeWordDetector()
+        self.vad = VoiceActivityDetector(sample_rate=sample_rate)
+
+    def listen_for_command(
+        self,
+        wake_timeout_seconds: float | None = None,
+    ) -> tuple[str | None, bytes]:
+        """
+        Listen for a wake word, play chime, then record the spoken command until silence pause.
+
+        Returns:
+            Tuple of (detected_wake_word, wav_bytes).
+            If timed out waiting for wake word, returns (None, b"").
+        """
+        import time
+        import sounddevice as sd
+        from voice.wakeword.chime import play_chime
+
+        # 1. Wait for wake word
+        wake_word = self.detector.listen_for_wake_word(timeout_seconds=wake_timeout_seconds)
+        if not wake_word:
+            return None, b""
+
+        logger.info("hands_free_wake_word_activated", wake_word=wake_word)
+
+        # 2. Play acoustic chime
+        if self._play_chime:
+            play_chime("activation", sample_rate=self._sample_rate)
+
+        # 3. Record speech command with VAD
+        recorded_chunks: list[np.ndarray] = []
+        speech_started = False
+        silence_duration = 0.0
+        chunk_duration = 1280 / self._sample_rate  # 80ms
+        stop_recording = False
+
+        def vad_audio_callback(indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
+            nonlocal speech_started, silence_duration, stop_recording
+            if stop_recording:
+                return
+
+            flat_chunk = indata.flatten()
+            recorded_chunks.append(flat_chunk.copy())
+
+            # Calibrate on first 3 chunks
+            if len(recorded_chunks) <= 3:
+                self.vad.calibrate(recorded_chunks)
+                return
+
+            is_speaking = self.vad.is_speech(flat_chunk)
+            if is_speaking:
+                speech_started = True
+                silence_duration = 0.0
+            elif speech_started:
+                silence_duration += chunk_duration
+                if silence_duration >= self._pause_threshold:
+                    stop_recording = True
+
+        with sd.InputStream(
+            samplerate=self._sample_rate,
+            channels=1,
+            dtype="int16",
+            blocksize=1280,
+            callback=vad_audio_callback,
+        ):
+            start_t = time.time()
+            while not stop_recording:
+                if (time.time() - start_t) > self._max_duration:
+                    break
+                time.sleep(0.04)
+
+        if not recorded_chunks:
+            return wake_word, b""
+
+        audio_data = np.concatenate(recorded_chunks, axis=0)
+        wav_bytes = self._to_wav_bytes(audio_data)
+        logger.info("hands_free_speech_captured", duration_s=round(len(audio_data) / self._sample_rate, 2))
+        return wake_word, wav_bytes
+
+    def _to_wav_bytes(self, audio_data: np.ndarray) -> bytes:
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(self._sample_rate)
+            wf.writeframes(audio_data.tobytes())
+        return buf.getvalue()
+

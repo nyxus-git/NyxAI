@@ -53,6 +53,15 @@ TOOL_POLICY: dict[str, PermissionLevel] = {
     "open_url": PermissionLevel.CONFIRMATION,
     "web_search": PermissionLevel.CONFIRMATION,
 
+    # ── Media & Communications Tools
+    "play_youtube": PermissionLevel.CONFIRMATION,
+    "control_media": PermissionLevel.SAFE,
+    "check_emails": PermissionLevel.SAFE,
+    "check_telegram": PermissionLevel.SAFE,
+    "send_discord_alert": PermissionLevel.CONFIRMATION,
+    "activate_all_tasks": PermissionLevel.SAFE,
+    "execute_terminal_command": PermissionLevel.CONFIRMATION,
+
     # ── Blocked forever
     # Shell execution is NEVER exposed to the LLM directly.
     "run_shell_command": PermissionLevel.BLOCKED,

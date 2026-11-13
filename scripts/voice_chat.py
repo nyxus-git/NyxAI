@@ -81,11 +81,29 @@ def parse_args() -> argparse.Namespace:
         choices=["auto", "hi", "mr", "en"],
         help="Language for Whisper ('auto', 'hi', 'mr', 'en'). Default: auto",
     )
+    parser.add_argument(
+        "--hands-free",
+        "--wake-word",
+        dest="hands_free",
+        action="store_true",
+        help="Hands-free mode triggered by 'Hey Nyx' or 'Hey Jarvis' with automatic VAD end-pointing.",
+    )
     return parser.parse_args()
 
 
-def print_banner() -> None:
-    print("""
+def print_banner(hands_free: bool = False) -> None:
+    if hands_free:
+        print("""
+╔═══════════════════════════════════════════════════════════╗
+║              NyxAI — Hands-Free Voice Assistant           ║
+║                                                           ║
+║  Wake Words: "Hey Nyx" or "Hey Jarvis"                    ║
+║  Speak naturally — automatic VAD silence end-pointing     ║
+║  Ctrl+C to quit                                           ║
+╚═══════════════════════════════════════════════════════════╝
+""")
+    else:
+        print("""
 ╔═══════════════════════════════════════════════════════════╗
 ║              NyxAI — Push-to-Talk Voice Chat              ║
 ║                                                           ║
@@ -100,9 +118,9 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
     from core.agent.schemas import AgentMode
     from voice.stt.transcriber import WhisperTranscriber
     from voice.tts.speaker import NyxTTSSpeaker
-    from voice.wakeword.listener import PushToTalkListener
+    from voice.wakeword.listener import HandsFreeVoiceListener, PushToTalkListener
 
-    print_banner()
+    print_banner(hands_free=args.hands_free)
 
     # Initialize components
     print(f"🤖 Mode: {args.mode.upper()}")
@@ -124,6 +142,9 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
         tts_speaker = NyxTTSSpeaker(kokoro_voice=args.voice)
 
     listener = PushToTalkListener(sample_rate=16000, channels=1)
+    hands_free_listener: HandsFreeVoiceListener | None = None
+    if args.hands_free:
+        hands_free_listener = HandsFreeVoiceListener(sample_rate=16000)
 
     # Initialize Memory & API connection
     # Import ChatService, MemoryService, and LLM directly (in-process call)
@@ -181,7 +202,15 @@ async def run_voice_chat(args: argparse.Namespace) -> None:
             print(f"\n[Turn {turn}]")
 
             # Record audio
-            audio_bytes = listener.record_until_keypress()
+            if args.hands_free and hands_free_listener:
+                print("🎧 Listening for wake word ('Hey Nyx' / 'Hey Jarvis')...")
+                wake_word, audio_bytes = hands_free_listener.listen_for_command()
+                if not audio_bytes:
+                    print("⚠️  No speech captured. Resuming wake-word listening...")
+                    continue
+                print(f"⚡ Wake word '{wake_word}' detected! Processing command...")
+            else:
+                audio_bytes = listener.record_until_keypress()
 
             if not audio_bytes:
                 print("⚠️  No audio captured. Try again.")

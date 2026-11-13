@@ -64,6 +64,10 @@ evaluate:
 voice:
 	$(PYTHON) scripts/voice_chat.py --mode agent
 
+# ─── Hands-free voice assistant CLI (Hey Nyx / Hey Jarvis) ─────────────────────
+voice-hands-free:
+	$(PYTHON) scripts/voice_chat.py --mode agent --hands-free
+
 # ─── Voice CLI (companion mode) ───────────────────────────────────────────────
 voice-companion:
 	$(PYTHON) scripts/voice_chat.py --mode companion

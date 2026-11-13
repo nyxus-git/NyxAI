@@ -7,6 +7,7 @@ import { Controls } from './components/Controls';
 import { Conversation } from './components/Conversation';
 import { Header } from './components/Header';
 import { MemoryPanel } from './components/MemoryPanel';
+import { MultiAgentHUD } from './components/MultiAgentHUD';
 import { StatusIndicator } from './components/StatusIndicator';
 import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { useVoiceWebSocket } from './hooks/useVoiceWebSocket';
@@ -14,7 +15,7 @@ import { API_BASE, fetchAvatarConfig, fetchHealth } from './services/api';
 import { AvatarConfig } from './types/companion';
 import { DEFAULT_AVATAR_LANDMARKS } from './utils/faceLandmarks';
 
-type DrawerTab = 'chat' | 'memory' | 'conversations';
+type DrawerTab = 'chat' | 'telemetry' | 'memory' | 'conversations';
 
 const INITIAL_CONFIG: AvatarConfig = {
   mode: 'stylized',
@@ -103,6 +104,11 @@ export const App: React.FC = () => {
         drawerOpen={drawerOpen}
         onToggleDrawer={() => setDrawerOpen((v) => !v)}
         onOpenCustomize={() => setCustomizeOpen(true)}
+        onQuickActivate={() => void sendTextMessage('Activate all tasks')}
+        onOpenTelemetry={() => {
+          setActiveTab('telemetry');
+          setDrawerOpen(true);
+        }}
       />
 
       {errorBanner && (
@@ -162,6 +168,7 @@ export const App: React.FC = () => {
               {(
                 [
                   { id: 'chat', label: 'Chat' },
+                  { id: 'telemetry', label: 'HUD & Swarm' },
                   { id: 'memory', label: 'Memory' },
                   { id: 'conversations', label: 'History' },
                 ] as { id: DrawerTab; label: string }[]
@@ -187,6 +194,8 @@ export const App: React.FC = () => {
                   onReplayAudio={replayMessageAudio}
                   onNewChat={startNewConversation}
                 />
+              ) : activeTab === 'telemetry' ? (
+                <MultiAgentHUD onSendMessage={(t) => void sendTextMessage(t)} />
               ) : activeTab === 'memory' ? (
                 <MemoryPanel apiBaseUrl={API_BASE} />
               ) : (

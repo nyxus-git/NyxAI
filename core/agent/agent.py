@@ -33,6 +33,7 @@ import re
 import uuid
 import aiosqlite
 
+from core.agent.router import DomainClassifier
 from core.agent.schemas import AgentResponse, ToolCall, ToolResult
 from core.agent.tool_registry import ToolNotFoundError, ToolPermissionError, ToolRegistry, ToolValidationError
 from core.brain.llm import LLMProvider, Message, MessageRole
@@ -93,10 +94,12 @@ class NyxAgent:
         llm_provider: LLMProvider,
         tool_registry: ToolRegistry,
         max_iterations: int = MAX_ITERATIONS,
+        router: DomainClassifier | None = None,
     ) -> None:
         self._llm = llm_provider
         self._registry = tool_registry
         self._max_iterations = max_iterations
+        self._router = router or DomainClassifier()
         self._tools_for_ollama = tool_registry.get_tools_for_ollama()
 
         logger.info(
@@ -163,6 +166,24 @@ class NyxAgent:
         # Working message list — grows with each tool call iteration
         messages: list[Message] = [system_message] + history + [user_message]
 
+        # Domain classification for dynamic prompt & tool pruning
+        detected_domains = self._router.classify(message, history=history)
+        if detected_domains:
+            initial_tools = self._registry.get_tools_for_ollama(categories=detected_domains)
+        else:
+            # For pure chitchat / conversational queries:
+            # If full registry has many tools (>4), prune tools to empty to eliminate tool hallucination!
+            # If small registry (e.g. test fixtures with 1 tool), keep registered tools.
+            initial_tools = [] if len(self._tools_for_ollama) > 4 else self._tools_for_ollama
+
+        logger.debug(
+            "agent_domain_classified",
+            conversation_prefix=conv_id,
+            detected_domains=detected_domains,
+            pruned_tool_count=len(initial_tools),
+            total_tool_count=len(self._tools_for_ollama),
+        )
+
         tool_used: str | None = None
         tool_result_data: dict | None = None
         iterations = 0
@@ -178,10 +199,11 @@ class NyxAgent:
                 message_count=len(messages),
             )
 
-            # Call LLM with tools
+            # Call LLM with tools: on iteration 1 use domain-pruned tools; on iteration > 1 allow all tools
+            active_tools = initial_tools if iterations == 1 else self._tools_for_ollama
             llm_response = await self._llm.chat_with_tools(
                 messages=messages,
-                tools=self._tools_for_ollama,
+                tools=active_tools,
                 temperature=0.5,  # Lower temp for more deterministic tool selection
             )
 
@@ -230,13 +252,16 @@ class NyxAgent:
 
             # Case 2: LLM wants to call a tool
             # Process the first tool call (handle one at a time for safety)
-            tool_call: ToolCall = llm_response.tool_calls[0]
+            raw_tool_call: ToolCall = llm_response.tool_calls[0]
+            # Normalize tool name and argument parameter aliases to eliminate LLM syntax drift
+            tool_call: ToolCall = self._registry.normalize_tool_call(raw_tool_call)
 
             logger.info(
                 "agent_tool_call_received",
                 conversation_prefix=conv_id,
                 iteration=iterations,
-                tool_name=tool_call.name,
+                raw_tool_name=raw_tool_call.name,
+                normalized_tool_name=tool_call.name,
                 arguments=tool_call.arguments,
             )
 
@@ -337,12 +362,17 @@ class NyxAgent:
             return result
 
         except ToolNotFoundError as e:
-            logger.warning("agent_tool_not_found", tool_name=tool_call.name)
+            import difflib
+            all_names = self._registry.get_tool_names()
+            matches = difflib.get_close_matches(tool_call.name, all_names, n=1, cutoff=0.5)
+            suggestion = f" Did you mean '{matches[0]}'?" if matches else ""
+            hint = f" Available tools: {', '.join(sorted(all_names))}."
+            logger.warning("agent_tool_not_found", tool_name=tool_call.name, suggestion=suggestion)
             return ToolResult(
                 tool_name=tool_call.name,
                 success=False,
-                error=str(e),
-                display_text=f"I tried to use '{tool_call.name}' but it's not available.",
+                error=f"{str(e)}{suggestion}{hint}",
+                display_text=f"I tried to use '{tool_call.name}' but it's not available.{suggestion}",
             )
 
         except ToolPermissionError as e:

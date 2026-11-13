@@ -26,9 +26,11 @@ interface ControlsProps {
 }
 
 const QUICK_PROMPTS = [
-  'Open Firefox for me',
+  'Activate all tasks',
+  'Play lo-fi beats on YouTube',
   'Check my CPU, RAM and battery',
-  'Hey! Tell me a fun fact',
+  'Run terminal: git status',
+  'Open Firefox for me',
 ];
 
 const PHASE_COPY: Record<Exclude<VoicePhase, 'off'>, { label: string; badgeClass: string }> = {

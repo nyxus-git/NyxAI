@@ -60,13 +60,198 @@ class ToolValidationError(Exception):
     pass
 
 
+# Tool Name Aliases for LLM hallucination and naming drift mitigation
+TOOL_NAME_ALIASES: dict[str, str] = {
+    # System tools
+    "get_battery": "get_battery_status",
+    "battery": "get_battery_status",
+    "battery_status": "get_battery_status",
+    "check_battery": "get_battery_status",
+    "get_cpu": "get_cpu_usage",
+    "cpu": "get_cpu_usage",
+    "cpu_usage": "get_cpu_usage",
+    "check_cpu": "get_cpu_usage",
+    "get_ram": "get_ram_usage",
+    "ram": "get_ram_usage",
+    "ram_usage": "get_ram_usage",
+    "memory": "get_ram_usage",
+    "get_time": "get_current_time",
+    "time": "get_current_time",
+    "current_time": "get_current_time",
+    "clock": "get_current_time",
+    "system_info": "get_system_info",
+    "sysinfo": "get_system_info",
+    "get_gpu": "get_gpu_status",
+    "gpu": "get_gpu_status",
+    "gpu_status": "get_gpu_status",
+    # Applications
+    "open_app": "open_application",
+    "launch_app": "open_application",
+    "launch_application": "open_application",
+    "run_app": "open_application",
+    "start_app": "open_application",
+    "open_program": "open_application",
+    # Browser
+    "search_web": "web_search",
+    "google": "web_search",
+    "duckduckgo": "web_search",
+    "search": "web_search",
+    "open_website": "open_url",
+    "open_browser": "open_url",
+    "browse": "open_url",
+    "read_url": "read_webpage",
+    "read_page": "read_webpage",
+    "scrape_page": "read_webpage",
+    # Files
+    "read": "read_file",
+    "cat": "read_file",
+    "view_file": "read_file",
+    "list_dir": "list_directory",
+    "dir": "list_directory",
+    "ls": "list_directory",
+    "find_files": "search_files",
+    "find_file": "search_files",
+    "search_file": "search_files",
+    # Tasks
+    "create_task": "add_task",
+    "new_task": "add_task",
+    "set_task": "add_task",
+    "get_tasks": "list_tasks",
+    "show_tasks": "list_tasks",
+    "todos": "list_tasks",
+    "done_task": "complete_task",
+    "finish_task": "complete_task",
+    "remind_me": "set_reminder",
+    "add_reminder": "set_reminder",
+    # Planning
+    "make_plan": "create_plan",
+    "plan": "create_plan",
+    # Terminal
+    "run_command": "execute_terminal_command",
+    "exec_command": "execute_terminal_command",
+    "shell_command": "execute_terminal_command",
+    "terminal": "execute_terminal_command",
+    # Media & YouTube
+    "youtube": "play_youtube",
+    "play_video": "play_youtube",
+    "play_song": "play_youtube",
+    "play_music": "play_youtube",
+    "media": "control_media",
+    # Communications
+    "email": "check_emails",
+    "emails": "check_emails",
+    "get_emails": "check_emails",
+    "read_emails": "check_emails",
+    "telegram": "check_telegram",
+    "get_telegram": "check_telegram",
+    "discord": "send_discord_alert",
+    "post_discord": "send_discord_alert",
+    # JARVIS Master Routine
+    "activate_tasks": "activate_all_tasks",
+    "morning_routine": "activate_all_tasks",
+    "daily_briefing": "activate_all_tasks",
+}
+
+# Parameter Aliases per tool
+PARAM_ALIASES: dict[str, dict[str, str]] = {
+    "execute_terminal_command": {
+        "cmd": "command",
+        "shell_command": "command",
+    },
+    "play_youtube": {
+        "song": "query",
+        "video": "query",
+        "search": "query",
+        "title": "query",
+    },
+    "send_discord_alert": {
+        "text": "message",
+        "alert": "message",
+        "content": "message",
+    },
+    "open_application": {
+        "app": "application",
+        "app_name": "application",
+        "name": "application",
+        "program": "application",
+        "app_title": "application",
+    },
+    "web_search": {
+        "search_query": "query",
+        "q": "query",
+        "term": "query",
+        "text": "query",
+        "search_term": "query",
+    },
+    "open_url": {
+        "link": "url",
+        "uri": "url",
+        "address": "url",
+        "website": "url",
+        "site": "url",
+    },
+    "read_webpage": {
+        "link": "url",
+        "uri": "url",
+        "address": "url",
+        "website": "url",
+        "site": "url",
+    },
+    "read_file": {
+        "file_path": "path",
+        "filepath": "path",
+        "filename": "path",
+        "file": "path",
+    },
+    "list_directory": {
+        "directory": "path",
+        "dir": "path",
+        "folder": "path",
+        "dir_path": "path",
+    },
+    "search_files": {
+        "query": "pattern",
+        "name": "pattern",
+        "file_pattern": "pattern",
+        "dir": "path",
+        "directory": "path",
+        "folder": "path",
+    },
+    "add_task": {
+        "task": "title",
+        "text": "title",
+        "description": "title",
+        "name": "title",
+        "task_title": "title",
+    },
+    "complete_task": {
+        "id": "task_id",
+        "task": "task_id",
+    },
+    "set_reminder": {
+        "text": "message",
+        "reminder": "message",
+        "msg": "message",
+        "timestamp": "remind_at",
+        "datetime": "remind_at",
+        "date": "remind_at",
+        "time": "remind_at",
+    },
+    "create_plan": {
+        "goal": "task",
+        "objective": "task",
+        "description": "task",
+    },
+}
+
+
 class ToolRegistry:
     """
     Registry of all tools available to the NyxAI agent.
 
     Tools are registered with their definition (for LLM consumption) and
-    a handler function (for execution). The registry enforces safety policy
-    and argument validation before any tool executes.
+    a handler function (for execution). The registry enforces safety policy,
+    alias normalization, and argument validation before any tool executes.
 
     Thread safety note:
       Tools are registered at startup and never modified during request
@@ -76,6 +261,8 @@ class ToolRegistry:
     def __init__(self) -> None:
         # tool_name → (ToolDefinition, handler_function)
         self._tools: dict[str, tuple[ToolDefinition, ToolHandler]] = {}
+        # category → list of tool names
+        self._by_category: dict[str, list[str]] = {}
         self._validator = CommandValidator()
 
     def register(
@@ -101,6 +288,11 @@ class ToolRegistry:
             )
 
         self._tools[definition.name] = (definition, handler)
+        cat = definition.category or "general"
+        if cat not in self._by_category:
+            self._by_category[cat] = []
+        self._by_category[cat].append(definition.name)
+
         logger.debug(
             "tool_registered",
             name=definition.name,
@@ -108,17 +300,43 @@ class ToolRegistry:
             permission=get_permission_level(definition.name).name,
         )
 
-    def get_tools_for_ollama(self) -> list[dict]:
-        """
-        Return all registered tools in Ollama's JSON format.
+    def get_categories(self) -> list[str]:
+        """Return all distinct tool categories registered."""
+        return sorted(list(self._by_category.keys()))
 
-        This list is passed directly to Ollama's /api/chat endpoint
-        as the 'tools' parameter.
+    def get_tools_by_category(self, category: str) -> list[ToolDefinition]:
+        """Return all tool definitions belonging to a specific category."""
+        names = self._by_category.get(category, [])
+        return [self._tools[n][0] for n in names if n in self._tools]
+
+    def get_tools_for_ollama(
+        self,
+        categories: list[str] | set[str] | None = None,
+    ) -> list[dict]:
+        """
+        Return registered tools in Ollama's JSON format.
+
+        Args:
+            categories: Optional list of domain categories to filter by.
+                        If None, all registered tools are returned.
 
         Returns:
             List of tool definition dicts in Ollama format.
         """
-        return [
+        if categories is None:
+            return [
+                definition.to_ollama_format()
+                for definition, _ in self._tools.values()
+            ]
+
+        target_cats = set(categories)
+        filtered = [
+            definition.to_ollama_format()
+            for definition, _ in self._tools.values()
+            if definition.category in target_cats or definition.category == "general"
+        ]
+        # If filtering returned empty (e.g. invalid category), fall back to all tools
+        return filtered if filtered else [
             definition.to_ollama_format()
             for definition, _ in self._tools.values()
         ]
@@ -128,18 +346,44 @@ class ToolRegistry:
         return list(self._tools.keys())
 
     def has_tool(self, name: str) -> bool:
-        """Return True if a tool with the given name is registered."""
-        return name in self._tools
+        """Return True if a tool with the given name (or recognized alias) is registered."""
+        canonical = TOOL_NAME_ALIASES.get(name.lower(), name)
+        return canonical in self._tools
+
+    def normalize_tool_call(self, tool_call: ToolCall) -> ToolCall:
+        """
+        Normalize tool name and parameter aliases to mitigate LLM hallucination.
+
+        Args:
+            tool_call: The raw tool call from the LLM.
+
+        Returns:
+            Normalized ToolCall with canonical tool name and argument keys.
+        """
+        # 1. Resolve tool name alias
+        raw_name = tool_call.name.strip()
+        canonical_name = TOOL_NAME_ALIASES.get(raw_name.lower(), raw_name)
+
+        # 2. Resolve parameter aliases
+        normalized_args: dict[str, Any] = {}
+        tool_param_map = PARAM_ALIASES.get(canonical_name, {})
+
+        for key, val in tool_call.arguments.items():
+            clean_key = tool_param_map.get(key, key)
+            normalized_args[clean_key] = val
+
+        return ToolCall(name=canonical_name, arguments=normalized_args)
 
     async def dispatch(self, tool_call: ToolCall, confirmed: bool = False) -> ToolResult:
         """
-        Dispatch a tool call from the LLM: validate → check policy → execute.
+        Dispatch a tool call from the LLM: normalize → validate → check policy → execute.
 
         This is the safe execution path. It enforces:
-        1. The tool exists in the registry
-        2. The tool is not BLOCKED by the safety policy
-        3. The tool is auto-executable (SAFE level) unless confirmed=True for CONFIRMATION tools
-        4. The arguments pass CommandValidator checks
+        1. Tool name and argument normalization
+        2. The tool exists in the registry
+        3. The tool is not BLOCKED by the safety policy
+        4. The tool is auto-executable (SAFE level) unless confirmed=True for CONFIRMATION tools
+        5. The arguments pass CommandValidator checks
 
         Args:
             tool_call: The ToolCall from the LLM (name + arguments).
@@ -153,6 +397,8 @@ class ToolRegistry:
             ToolPermissionError: If the tool is BLOCKED.
             ToolValidationError: If arguments fail safety validation.
         """
+        # 0. Normalize tool call name and argument aliases
+        tool_call = self.normalize_tool_call(tool_call)
         tool_name = tool_call.name
 
         # 1. Check registry
@@ -307,6 +553,26 @@ def build_default_registry() -> ToolRegistry:
         create_plan,
         update_plan,
     )
+    from tools.terminal.terminal_tools import (
+        EXECUTE_TERMINAL_DEF,
+        execute_terminal_command,
+    )
+    from tools.youtube.youtube_tools import (
+        PLAY_YOUTUBE_DEF,
+        CONTROL_MEDIA_DEF,
+        play_youtube,
+        control_media,
+    )
+    from tools.comms.comms_tools import (
+        CHECK_EMAILS_DEF,
+        CHECK_TELEGRAM_DEF,
+        SEND_DISCORD_DEF,
+        ACTIVATE_ALL_TASKS_DEF,
+        check_emails,
+        check_telegram,
+        send_discord_alert,
+        activate_all_tasks,
+    )
 
     registry = ToolRegistry()
 
@@ -317,6 +583,7 @@ def build_default_registry() -> ToolRegistry:
     registry.register(GET_TIME_DEF, get_current_time)
     registry.register(GET_SYSINFO_DEF, get_system_info)
     registry.register(GET_GPU_DEF, get_gpu_status)
+    registry.register(ACTIVATE_ALL_TASKS_DEF, activate_all_tasks)
 
     # ── Application tools
     registry.register(OPEN_APPLICATION_DEF, open_application)
@@ -343,6 +610,18 @@ def build_default_registry() -> ToolRegistry:
     # ── Planning tools
     registry.register(CREATE_PLAN_DEF, create_plan)
     registry.register(UPDATE_PLAN_DEF, update_plan)
+
+    # ── Terminal tools
+    registry.register(EXECUTE_TERMINAL_DEF, execute_terminal_command)
+
+    # ── Media tools
+    registry.register(PLAY_YOUTUBE_DEF, play_youtube)
+    registry.register(CONTROL_MEDIA_DEF, control_media)
+
+    # ── Communications tools
+    registry.register(CHECK_EMAILS_DEF, check_emails)
+    registry.register(CHECK_TELEGRAM_DEF, check_telegram)
+    registry.register(SEND_DISCORD_DEF, send_discord_alert)
 
     logger.info(
         "tool_registry_built",

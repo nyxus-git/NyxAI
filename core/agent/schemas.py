@@ -30,6 +30,21 @@ class AgentMode(str, Enum):
     AGENT = "agent"          # Tool-enabled agentic mode
 
 
+class ToolDomain(str, Enum):
+    """Categorical domains for dynamic prompt and tool pruning."""
+
+    SYSTEM = "system"          # Battery, CPU, RAM, GPU, Time, SysInfo
+    APPLICATIONS = "applications" # Desktop app launching (Firefox, VS Code, Terminal)
+    BROWSER = "browser"        # Web search, open URL, read webpage
+    FILES = "files"            # Local file system read, list, search, move, copy, delete
+    TASKS = "tasks"            # To-dos, task management, reminders
+    PLANNING = "planning"      # Multi-step task decomposition and tracking
+    TERMINAL = "terminal"      # Terminal shell commands and diagnostics
+    MEDIA = "media"            # YouTube playback and media controls
+    COMMS = "comms"            # Email, Telegram, Discord communications
+    GENERAL = "general"        # Universal / unclassified tools
+
+
 # Tool Definition
 
 

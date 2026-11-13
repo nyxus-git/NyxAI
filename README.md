@@ -185,6 +185,15 @@ make test
 
 ---
 
+## Documentation
+
+- [Tools, Technologies & Frameworks Guide](docs/TOOLS_AND_TECHNOLOGIES.md) — Comprehensive breakdown of all tools, libraries, models, and frameworks used in NyxAI and why they were chosen.
+- [Next-Level Implementation Plan (NyxAI 2.0)](docs/NEXT_LEVEL_IMPLEMENTATION_PLAN.md) — Architectural roadmap for multi-agent swarm, "Hey Nyx" wake word, communications hub, and JARVIS HUD.
+- [Architecture & Technical Design](docs/ARCHITECTURE.md) — Subsystem architecture and service lifecycles.
+- [API Reference](docs/API.md) — REST, WebSocket, and Desktop IPC specifications.
+
+---
+
 ## License
 
 MIT

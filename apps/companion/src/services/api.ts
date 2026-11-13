@@ -4,6 +4,8 @@ import {
   ConversationDetail,
   ConversationSummary,
   HealthInfo,
+  QuickActionResult,
+  SystemTelemetry,
   VisemeFrame,
 } from '../types/companion';
 
@@ -163,4 +165,31 @@ export async function deleteConversation(id: string): Promise<boolean> {
   const res = await fetch(`${API_BASE}/memory/conversations/${id}`, { method: 'DELETE' });
   return res.ok;
 }
+
+export async function fetchSystemTelemetry(): Promise<SystemTelemetry | null> {
+  try {
+    const res = await fetch(`${API_BASE}/system/telemetry`);
+    if (!res.ok) return null;
+    return (await res.json()) as SystemTelemetry;
+  } catch {
+    return null;
+  }
+}
+
+export async function postQuickAction(
+  action: string,
+  params: Record<string, unknown> = {}
+): Promise<QuickActionResult> {
+  const res = await fetch(`${API_BASE}/system/quick-action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, params }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Quick action '${action}' failed`);
+  }
+  return (await res.json()) as QuickActionResult;
+}
+
 

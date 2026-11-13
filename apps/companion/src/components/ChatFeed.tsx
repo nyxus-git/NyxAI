@@ -1,14 +1,19 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Battery,
-  Cpu,
-  HardDrive,
-  Terminal,
-  Search,
   CheckCircle,
   Clock,
-  Volume2,
+  Cpu,
+  ExternalLink,
+  HardDrive,
+  Mail,
+  MessageSquare,
+  Play,
   PlusCircle,
+  Search,
+  Terminal,
+  Volume2,
+  Zap,
 } from 'lucide-react';
 import { ChatMessage } from '../types/companion';
 
@@ -97,6 +102,104 @@ export const ChatFeed: React.FC<ChatFeedProps> = ({
             <span>Web Search</span>
           </div>
           <div>Query: "{String(toolResult.query ?? '')}"</div>
+        </div>
+      );
+    }
+
+    if (toolUsed === 'activate_all_tasks') {
+      const hw = (toolResult.hardware as Record<string, unknown>) || {};
+      const comms = (toolResult.comms as Record<string, unknown>) || {};
+      return (
+        <div className="tool-card jarvis-briefing-card">
+          <div className="tool-card-header">
+            <Zap className="w-4 h-4 text-cyan-400" />
+            <span className="text-cyan-300 font-semibold">JARVIS Master Briefing</span>
+          </div>
+          <div className="jarvis-briefing-grid mt-2">
+            <div className="briefing-chip">
+              <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+              <span>CPU: {String(hw.cpu_percent ?? '?')}%</span>
+            </div>
+            <div className="briefing-chip">
+              <HardDrive className="w-3.5 h-3.5 text-violet-400" />
+              <span>RAM: {String(hw.ram_percent ?? '?')}%</span>
+            </div>
+            <div className="briefing-chip">
+              <Battery className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Battery: {String(hw.battery_percent ?? '?')}%</span>
+            </div>
+            <div className="briefing-chip">
+              <Mail className="w-3.5 h-3.5 text-amber-400" />
+              <span>Emails: {String(comms.unread_emails ?? 0)} unread</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (toolUsed === 'play_youtube') {
+      const url = String(toolResult.url ?? '');
+      return (
+        <div className="tool-card media-player-card">
+          <div className="tool-card-header">
+            <Play className="w-4 h-4 text-rose-400" />
+            <span>YouTube Stream</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between">
+            <span className="font-medium text-slate-200 truncate">"{String(toolResult.query ?? 'Video')}"</span>
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+              >
+                <span>Watch</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (toolUsed === 'control_media') {
+      return (
+        <div className="tool-card">
+          <div className="tool-card-header">
+            <Volume2 className="w-4 h-4 text-emerald-400" />
+            <span>Media Controller</span>
+          </div>
+          <div>Action: {String(toolResult.action ?? 'play_pause')}</div>
+        </div>
+      );
+    }
+
+    if (toolUsed === 'execute_terminal_command') {
+      const cmd = String(toolResult.command ?? '');
+      const stdout = String(toolResult.stdout ?? '').trim();
+      return (
+        <div className="tool-card terminal-card">
+          <div className="tool-card-header">
+            <Terminal className="w-4 h-4 text-emerald-400" />
+            <span>Shell Execution</span>
+            <span className="text-[10px] opacity-75 font-mono ml-auto">$ {cmd}</span>
+          </div>
+          {stdout && (
+            <pre className="terminal-stdout mt-1.5">{stdout.slice(0, 400)}</pre>
+          )}
+        </div>
+      );
+    }
+
+    if (toolUsed === 'check_emails' || toolUsed === 'check_telegram' || toolUsed === 'send_discord_alert') {
+      return (
+        <div className="tool-card">
+          <div className="tool-card-header">
+            <MessageSquare className="w-4 h-4 text-violet-400" />
+            <span>Communications Hub ({toolUsed})</span>
+          </div>
+          <div>Status: {String(toolResult.status ?? 'Complete')}</div>
         </div>
       );
     }

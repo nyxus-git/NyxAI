@@ -94,3 +94,46 @@ export interface ConversationDetail {
   messages: ConversationMessageDTO[];
 }
 
+export interface AgentTelemetryInfo {
+  id: string;
+  name: string;
+  status: 'active' | 'ready' | 'busy' | string;
+  role: string;
+}
+
+export interface SystemTelemetry {
+  cpu: {
+    percent: number;
+    core_count?: number;
+  };
+  ram: {
+    used_gb: number;
+    total_gb: number;
+    percent: number;
+    available_gb?: number;
+  };
+  battery: {
+    percent: number;
+    plugged_in: boolean;
+    status: string;
+  };
+  gpu: {
+    name?: string;
+    temperature_c?: number;
+    memory_used_mb?: number;
+    memory_total_mb?: number;
+    gpu_utilization_percent?: number;
+    available?: boolean;
+  };
+  uptime: string;
+  agents: AgentTelemetryInfo[];
+}
+
+export interface QuickActionResult {
+  success: boolean;
+  action: string;
+  message: string;
+  data: Record<string, unknown>;
+}
+
+

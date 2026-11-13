@@ -37,7 +37,7 @@ OPEN_APPLICATION_DEF = ToolDefinition(
             required=True,
         ),
     },
-    category="files",
+    category="applications",
 )
 
 _APP_CANDIDATES: dict[str, list[str]] = {

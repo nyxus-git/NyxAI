@@ -31,6 +31,7 @@ numpy>=1.26.0           # Audio array processing
 kokoro-onnx>=0.4.0      # TTS: English, high quality, MIT licensed, ONNX CPU
 pyttsx3>=2.90           # TTS fallback: Hindi/Marathi via eSpeak-NG (offline)
 websockets>=13.0        # WebSocket support for /voice endpoint
+openwakeword>=0.4.0     # Wake-word detection & Silero VAD (Hey Nyx / Hey Jarvis)
 
 # Memory / Persistence
 aiosqlite>=0.20.0        # Async SQLite driver for conversation + memory persistence

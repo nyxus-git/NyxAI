@@ -52,7 +52,8 @@ dist/
 apps/companion/public/mediapipe/
 
 # Internal docs (PRD, roadmap, planning)
-docs/
+docs/PRD.md
+docs/ROADMAP.md
 
 # Fine-tuning experiments & model outputs
 training/experiments/
