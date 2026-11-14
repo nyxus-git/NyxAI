@@ -196,37 +196,71 @@ async def run_ptt() -> None:
 
         print(f"[NyxAI PTT] Captured {len(wav_bytes)} bytes. Processing...")
 
-        # Transcribe audio using backend STT or local faster-whisper
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(f"{BACKEND_URL}/health")
-            if resp.status_code != 200:
-                print(f"[NyxAI PTT] Backend service not ready: {resp.status_code}")
+        import base64
+        from voice.tts.speaker import play_wav_bytes
+
+        # Fast-path: query backend /voice/ask to utilize shared STT and TTS in memory without VRAM contention
+        backend_handled = False
+        try:
+            b64_audio = base64.b64encode(wav_bytes).decode("utf-8")
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(
+                    f"{BACKEND_URL}/voice/ask",
+                    json={
+                        "data": b64_audio,
+                        "mode": "agent",
+                        "auto_approve": True,
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    transcript = data.get("transcript", "")
+                    lang = data.get("language", "hi")
+                    reply = data.get("text", "")
+                    print(f"\nUser: {transcript} (lang={lang})")
+                    print(f"\nNyxAI: {reply}\n")
+                    if data.get("audio"):
+                        wav_resp = base64.b64decode(data["audio"])
+                        play_wav_bytes(wav_resp)
+                    backend_handled = True
+                elif resp.status_code == 422:
+                    print("[NyxAI PTT] No speech detected.")
+                    return
+        except Exception as e:
+            logger.debug("ptt_backend_voice_ask_fallback", error=str(e))
+
+        if not backend_handled:
+            # Fallback to local transcription and synthesis
+            from voice.stt.transcriber import WhisperTranscriber
+            from voice.tts.speaker import NyxTTSSpeaker
+
+            transcriber = WhisperTranscriber(model="small")
+            result = transcriber.transcribe(wav_bytes)
+
+            if not result.text.strip():
+                print("[NyxAI PTT] Speech not recognized.")
                 return
 
-        # Use WhisperTranscriber directly
-        from voice.stt.transcriber import WhisperTranscriber
-        transcriber = WhisperTranscriber(model="small")
-        result = transcriber.transcribe(wav_bytes)
+            print(f"\nUser: {result.text} (lang={result.language})")
 
-        if not result.text.strip():
-            print("[NyxAI PTT] Speech not recognized.")
-            return
+            # Query backend chat
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                chat_resp = await client.post(
+                    f"{BACKEND_URL}/chat",
+                    json={
+                        "message": result.text,
+                        "mode": "agent",
+                        "auto_approve": True,
+                        "voice_mode": True,
+                    },
+                )
+                chat_data = chat_resp.json()
+                reply = chat_data.get("response") or chat_data.get("reply", "")
+                print(f"\nNyxAI: {reply}\n")
 
-        print(f"\nUser: {result.text} (lang={result.language})")
-
-        # Query backend chat
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            chat_resp = await client.post(
-                f"{BACKEND_URL}/chat",
-                json={"message": result.text, "mode": "agent"},
-            )
-            chat_data = chat_resp.json()
-            reply = chat_data.get("response") or chat_data.get("reply", "")
-            print(f"\nNyxAI: {reply}\n")
-
-            # Speak response with correct language routing
-            speaker = NyxTTSSpeaker()
-            speaker.speak(reply, language=result.language)
+                # Speak response with authentic Indian female voice (Charvi/Mithi)
+                speaker = NyxTTSSpeaker(prefer_mithi_for_english=True)
+                speaker.speak(reply, language=result.language)
 
     except Exception as e:
         logger.error("ptt_execution_failed", error=str(e))
@@ -292,7 +326,7 @@ async def run_hands_free_listener_task(
     from voice.tts.speaker import NyxTTSSpeaker
 
     listener = HandsFreeVoiceListener(wake_word=wake_word, sample_rate=16000)
-    speaker = NyxTTSSpeaker()
+    speaker = NyxTTSSpeaker(prefer_mithi_for_english=True)
     loop = asyncio.get_running_loop()
 
     logger.info("hands_free_listener_started", message=f"Listening for '{wake_word}'...")

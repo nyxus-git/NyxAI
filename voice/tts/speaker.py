@@ -25,8 +25,11 @@ Usage:
 from __future__ import annotations
 
 import io
+import os
+import re
 import threading
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -37,6 +40,40 @@ logger = get_logger(__name__)
 
 # Languages routed to the pyttsx3 fallback (eSpeak-NG)
 _PYTTSX3_LANGUAGES = {"hi", "mr", "pa", "bn", "gu", "te", "ta", "kn"}
+_MITHI_LANGUAGES = {"hi", "mr", "pa", "bn", "gu", "te", "ta", "kn", "ml", "or"}
+
+
+def clean_tts_text(text: str) -> str:
+    """
+    Clean text for text-to-speech engines:
+    - Removes markdown formatting (code blocks, backticks, bold, italic, links, headers).
+    - Removes URLs and emoji characters.
+    - Normalizes consecutive whitespace.
+    """
+    if not text:
+        return ""
+    # Remove code blocks
+    t = re.sub(r"```[\s\S]*?```", "", text)
+    # Remove inline code
+    t = re.sub(r"`([^`]+)`", r"\1", t)
+    # Remove markdown links: [label](url) -> label
+    t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)
+    # Remove raw URLs
+    t = re.sub(r"https?://\S+", "", t)
+    # Remove markdown headers (#, ##, etc.)
+    t = re.sub(r"^#{1,6}\s+", "", t, flags=re.MULTILINE)
+    # Remove markdown bold/italic (**text**, *text*, __text__, _text_)
+    t = re.sub(r"\*\*([^*]+)\*\*", r"\1", t)
+    t = re.sub(r"\*([^*]+)\*", r"\1", t)
+    t = re.sub(r"__([^_]+)__", r"\1", t)
+    t = re.sub(r"_([^_]+)_", r"\1", t)
+    # Remove blockquotes and list bullets at line starts
+    t = re.sub(r"^[\s>*+-]+\s*", "", t, flags=re.MULTILINE)
+    # Remove emojis (surrogates and broad Unicode symbol blocks)
+    t = re.sub(r"[\U00010000-\U0010ffff]", "", t)
+    # Normalize whitespaces
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
 
 # Abstract Provider
@@ -448,14 +485,22 @@ class EdgeTTSSpeaker(TTSProvider):
         "hi": "hi-IN-SwaraNeural",
         "mr": "mr-IN-AarohiNeural",
         "en-in": "en-IN-NeerjaExpressiveNeural",
-        "en": "en-US-JennyNeural",
+        "en": "en-IN-NeerjaExpressiveNeural",
+        "pa": "pa-IN-OjasNeural",
+        "bn": "bn-IN-TanishaaNeural",
+        "gu": "gu-IN-DhwaniNeural",
+        "ta": "ta-IN-PallaviNeural",
+        "te": "te-IN-ShrutiNeural",
+        "kn": "kn-IN-SapnaNeural",
+        "ml": "ml-IN-SobhanaNeural",
     }
 
     def __init__(self, fallback: TTSProvider | None = None) -> None:
         self._fallback = fallback
 
     def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
-        if not text.strip():
+        clean_text = clean_tts_text(text)
+        if not clean_text:
             return b""
 
         import asyncio
@@ -464,14 +509,20 @@ class EdgeTTSSpeaker(TTSProvider):
         import edge_tts
         import soundfile as sf
 
-        target_voice = voice or self.VOICE_MAP.get(language.lower(), self.VOICE_MAP.get("hi" if language == "hi" else "en"))
+        if voice and (voice in self.VOICE_MAP.values() or "Neural" in voice):
+            target_voice = voice
+        else:
+            default_voice = self.VOICE_MAP.get("hi" if language == "hi" else "en", "hi-IN-SwaraNeural")
+            target_voice = self.VOICE_MAP.get(language.lower()) or default_voice
 
         async def _run_edge() -> bytes:
-            communicate = edge_tts.Communicate(text, target_voice)
+            communicate = edge_tts.Communicate(clean_text, target_voice)
             mp3_bytes = b""
             async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    mp3_bytes += chunk["data"]
+                if chunk.get("type") == "audio":
+                    chunk_data = chunk.get("data")
+                    if isinstance(chunk_data, bytes):
+                        mp3_bytes += chunk_data
             if not mp3_bytes:
                 return b""
             data, sr = sf.read(io.BytesIO(mp3_bytes))
@@ -505,6 +556,242 @@ class EdgeTTSSpeaker(TTSProvider):
         return "edge-tts/neural-female"
 
 
+# Mithi TTS (Authentic Indian Female Voices — Oomni/mithi-v2-flash)
+
+
+class MithiSpeaker(TTSProvider):
+    """
+    High-fidelity neural TTS using Oomni/mithi-v2-flash.
+    Provides natural, human-like Indian female voices (Charvi, Ahana, Vaidehi, Malini, Jahnavi)
+    and male voices (Satvik, Anirban, Nakul, Vasant, Siddhant) for 11 Indian languages + English.
+
+    Voices available:
+      Female:
+        - charvi  : Warm, natural, friendly Indian female voice (default)
+        - ahana   : Clear, expressive Indian female voice
+        - vaidehi : Soft, polite Indian female voice
+        - malini  : Articulate, poised Indian female voice
+        - jahnavi : Bright, energetic Indian female voice
+      Male:
+        - satvik, anirban, nakul, vasant, siddhant
+
+    Supported languages:
+      hi (Hindi), mr (Marathi), en (English), bn (Bengali), gu (Gujarati),
+      kn (Kannada), ml (Malayalam), or (Odia), pa (Punjabi), ta (Tamil), te (Telugu)
+
+    Args:
+        voice: Default voice name (default: 'charvi').
+        speed: Speech speed multiplier.
+        model_dir: Path to mithi-v2-flash directory.
+        device: 'cuda' or 'cpu' (defaults to 'cuda' if torch.cuda.is_available() else 'cpu').
+        fallback: Optional fallback TTSProvider if Mithi is unavailable.
+    """
+
+    FEMALE_VOICES = ("charvi", "ahana", "vaidehi", "malini", "jahnavi")
+    MALE_VOICES = ("satvik", "anirban", "nakul", "vasant", "siddhant")
+    ALL_VOICES = FEMALE_VOICES + MALE_VOICES
+    LANGUAGES = {"hi", "mr", "en", "bn", "gu", "kn", "ml", "or", "pa", "ta", "te"}
+
+    def __init__(
+        self,
+        voice: str = "charvi",
+        speed: float = 1.0,
+        model_dir: str | Path | None = None,
+        device: str | None = None,
+        fallback: TTSProvider | None = None,
+    ) -> None:
+        self._voice = voice if voice in self.ALL_VOICES else "charvi"
+        self._speed = speed
+        self._fallback = fallback
+        self._lock = threading.Lock()
+        self._mithi: Any = None
+        self._sr: int = 24000
+
+        if model_dir is not None:
+            self._model_dir = Path(model_dir)
+        else:
+            project_root = Path(__file__).resolve().parent.parent.parent
+            self._model_dir = project_root / "models" / "tts" / "mithi-v2-flash"
+
+        self._device = device
+        logger.info(
+            "mithi_tts_configured",
+            voice=self._voice,
+            model_dir=str(self._model_dir),
+            device=self._device,
+        )
+
+    def _load_model(self) -> None:
+        """Lazy load the Mithi model into GPU/CPU memory with auto-CPU fallback on low VRAM."""
+        if self._mithi is not None:
+            return
+
+        with self._lock:
+            if self._mithi is not None:
+                return
+
+            if not self._model_dir.exists() or not (self._model_dir / "run.py").exists():
+                logger.warning(
+                    "mithi_model_not_found",
+                    path=str(self._model_dir),
+                    hint="Model not downloaded yet. Falling back.",
+                )
+                if self._fallback is None:
+                    self._fallback = EdgeTTSSpeaker(fallback=Pyttsx3Speaker())
+                return
+
+            try:
+                import importlib.util
+                import torch
+
+                # Smart device selection: ensure at least 500MB free VRAM before attempting CUDA
+                chosen_device = self._device
+                if not chosen_device:
+                    if torch.cuda.is_available():
+                        try:
+                            free_b, total_b = torch.cuda.mem_get_info()
+                            if free_b >= 500 * 1024 * 1024:
+                                chosen_device = "cuda"
+                            else:
+                                logger.info(
+                                    "mithi_using_cpu_low_vram",
+                                    free_mb=round(free_b / 1024 / 1024, 1),
+                                    message="GPU VRAM is tight (<500MB free). Running Mithi on CPU for stable synthesis.",
+                                )
+                                chosen_device = "cpu"
+                        except Exception:
+                            chosen_device = "cpu"
+                    else:
+                        chosen_device = "cpu"
+
+                logger.info(
+                    "mithi_model_loading",
+                    path=str(self._model_dir),
+                    device=chosen_device,
+                )
+
+                run_path = str(self._model_dir / "run.py")
+                spec = importlib.util.spec_from_file_location("mithi_flash_tts", run_path)
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Cannot load module spec from {run_path}")
+
+                mithi_mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mithi_mod)
+                self._mithi_mod = mithi_mod
+
+                try:
+                    self._mithi = mithi_mod.Mithi(
+                        model_dir=str(self._model_dir),
+                        device=chosen_device,
+                    )
+                except Exception as cuda_err:
+                    if chosen_device == "cuda":
+                        logger.warning("mithi_cuda_init_failed_trying_cpu", error=str(cuda_err))
+                        torch.cuda.empty_cache()
+                        chosen_device = "cpu"
+                        self._mithi = mithi_mod.Mithi(
+                            model_dir=str(self._model_dir),
+                            device="cpu",
+                        )
+                    else:
+                        raise cuda_err
+
+                self._current_device = chosen_device
+                self._sr = getattr(mithi_mod, "SR", 24000)
+                logger.info(
+                    "mithi_model_loaded_successfully",
+                    device=chosen_device,
+                    sample_rate=self._sr,
+                    voices=self._mithi.voices,
+                )
+            except Exception as e:
+                logger.error("mithi_model_load_failed", error=str(e))
+                if self._fallback is None:
+                    self._fallback = EdgeTTSSpeaker(fallback=Pyttsx3Speaker())
+
+    def _normalize_lang(self, language: str) -> str:
+        """Normalize language tags (e.g. 'hi-IN', 'hin', 'mr', 'en-US') to Mithi codes."""
+        lang_clean = language.strip().lower().split("-")[0].split("_")[0]
+        if lang_clean in self.LANGUAGES:
+            return lang_clean
+        mapping = {
+            "hin": "hi",
+            "mar": "mr",
+            "eng": "en",
+            "ben": "bn",
+            "guj": "gu",
+            "kan": "kn",
+            "mal": "ml",
+            "ori": "or",
+            "pan": "pa",
+            "tam": "ta",
+            "tel": "te",
+        }
+        return mapping.get(lang_clean, "hi")
+
+    def synthesize(self, text: str, language: str = "hi", voice: str | None = None) -> bytes:
+        clean_text = clean_tts_text(text)
+        if not clean_text:
+            return b""
+
+        self._load_model()
+
+        if self._mithi is None:
+            if self._fallback:
+                return self._fallback.synthesize(clean_text, language=language, voice=voice)
+            return b""
+
+        target_lang = self._normalize_lang(language)
+        target_voice = voice or self._voice
+        if target_voice not in self.ALL_VOICES:
+            target_voice = self._voice
+
+        try:
+            audio_samples = self._mithi.synthesize(
+                clean_text,
+                lang=target_lang,
+                voice=target_voice,
+            )
+            return _float32_to_wav_bytes(audio_samples, self._sr)
+        except Exception as e:
+            # If CUDA throws OOM during inference, reload on CPU and retry once
+            if getattr(self, "_current_device", None) == "cuda" and ("CUDA" in str(e) or "out of memory" in str(e).lower()):
+                try:
+                    import torch
+                    torch.cuda.empty_cache()
+                    logger.warning("mithi_cuda_oom_retrying_on_cpu", error=str(e))
+                    if hasattr(self, "_mithi_mod"):
+                        self._mithi = self._mithi_mod.Mithi(model_dir=str(self._model_dir), device="cpu")
+                        self._current_device = "cpu"
+                        audio_samples = self._mithi.synthesize(
+                            clean_text,
+                            lang=target_lang,
+                            voice=target_voice,
+                        )
+                        return _float32_to_wav_bytes(audio_samples, self._sr)
+                except Exception as cpu_err:
+                    logger.error("mithi_cpu_retry_failed", error=str(cpu_err))
+
+            logger.warning("mithi_synthesis_failed_fallback", error=str(e), text=clean_text[:50])
+            if self._fallback:
+                return self._fallback.synthesize(clean_text, language=language, voice=voice)
+            return b""
+
+    def speak(self, text: str, language: str = "hi") -> None:
+        clean_text = clean_tts_text(text)
+        if not clean_text:
+            return
+
+        wav = self.synthesize(clean_text, language=language)
+        if wav:
+            play_wav_bytes(wav)
+        elif self._fallback:
+            self._fallback.speak(clean_text, language=language)
+
+    def get_engine_name(self) -> str:
+        return f"mithi/{self._voice}"
+
+
 # Smart Router — NyxTTSSpeaker
 
 
@@ -513,14 +800,21 @@ class NyxTTSSpeaker(TTSProvider):
     The main TTS provider for NyxAI.
 
     Automatically routes to the best available TTS engine based on language:
-      - Hindi/Marathi → EdgeTTSSpeaker (Swara/Aarohi neural female voice) with pyttsx3 fallback
-      - English       → KokoroSpeaker (af_heart natural female) or EdgeTTSSpeaker
-      - Other         → KokoroSpeaker
+      - When use_mithi=True (default):
+          Routes Indian languages ('hi', 'mr', 'pa', 'bn', etc.) and optionally English
+          to MithiSpeaker (Oomni/mithi-v2-flash) with authentic Indian female voices
+          ('charvi', 'ahana', 'vaidehi', etc.).
+      - Fallback: EdgeTTSSpeaker (Swara/Aarohi neural female voice).
+      - English fallback: KokoroSpeaker (af_heart natural female).
+      - Fully offline fallback: Pyttsx3Speaker (eSpeak-NG).
 
     Args:
         kokoro_voice: Kokoro voice name for English TTS.
         tts_speed: Speech speed multiplier (applies to Kokoro).
         use_edge_neural: Whether to route Hindi/Marathi to neural female voices.
+        use_mithi: Whether to use Mithi for Indian languages.
+        mithi_voice: Mithi female voice name ('charvi', 'ahana', 'vaidehi', 'malini', 'jahnavi').
+        prefer_mithi_for_english: Whether to use Mithi's Indian voice for English too.
     """
 
     def __init__(
@@ -528,25 +822,52 @@ class NyxTTSSpeaker(TTSProvider):
         kokoro_voice: str = "af_heart",
         tts_speed: float = 1.0,
         use_edge_neural: bool = True,
+        use_mithi: bool = True,
+        mithi_voice: str = "charvi",
+        prefer_mithi_for_english: bool = False,
     ) -> None:
         self._kokoro = KokoroSpeaker(voice=kokoro_voice, speed=tts_speed)
         self._pyttsx3 = Pyttsx3Speaker()
         self._use_edge = use_edge_neural
         self._edge_tts = EdgeTTSSpeaker(fallback=self._pyttsx3)
+        self._use_mithi = use_mithi
+        self._mithi_voice = mithi_voice
+        self._prefer_mithi_for_english = prefer_mithi_for_english
+        self._mithi = MithiSpeaker(
+            voice=mithi_voice,
+            fallback=self._edge_tts if use_edge_neural else self._pyttsx3,
+        )
 
         logger.info(
             "nyx_tts_speaker_initialized",
             kokoro_voice=kokoro_voice,
             speed=tts_speed,
             use_edge_neural=use_edge_neural,
+            use_mithi=use_mithi,
+            mithi_voice=mithi_voice,
+            prefer_mithi_for_english=prefer_mithi_for_english,
         )
 
     def _get_provider(self, language: str) -> TTSProvider:
         """Select the appropriate TTS provider for the given language."""
-        if getattr(self, "_use_edge", False) and language in _PYTTSX3_LANGUAGES:
+        lang_base = language.strip().lower().split("-")[0].split("_")[0]
+
+        # 1. Primary: Mithi Indian neural female speaker
+        if getattr(self, "_use_mithi", False) and getattr(self, "_mithi", None) is not None:
+            if lang_base in _PYTTSX3_LANGUAGES or lang_base in _MITHI_LANGUAGES:
+                return self._mithi
+            if lang_base == "en" and getattr(self, "_prefer_mithi_for_english", False):
+                return self._mithi
+
+        # 2. Secondary fallback: Edge TTS neural female voice
+        if getattr(self, "_use_edge", False) and lang_base in _PYTTSX3_LANGUAGES:
             return self._edge_tts
-        if language in _PYTTSX3_LANGUAGES:
+
+        # 3. pyttsx3 fallback
+        if lang_base in _PYTTSX3_LANGUAGES:
             return self._pyttsx3
+
+        # 4. Kokoro for English or general fallback
         return self._kokoro
 
     def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
@@ -556,7 +877,7 @@ class NyxTTSSpeaker(TTSProvider):
         Args:
             text: Text to synthesize.
             language: Language code from Whisper detection ('en', 'hi', 'mr', etc.).
-            voice: Optional voice ID override (used for Kokoro).
+            voice: Optional voice ID override (used for Kokoro/Mithi).
 
         Returns:
             WAV audio bytes.

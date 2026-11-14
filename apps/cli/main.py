@@ -86,7 +86,8 @@ async def query_local_fallback(prompt: str) -> str:
         from core.agent.tool_registry import build_default_registry
         from core.brain.providers.ollama import OllamaProvider
 
-        provider = OllamaProvider(base_url="http://127.0.0.1:11434", model="qwen2.5:3b")
+        model_name = os.getenv("NYXAI_OLLAMA_MODEL") or os.getenv("OLLAMA_MODEL") or "qwen2.5:7b"
+        provider = OllamaProvider(base_url="http://127.0.0.1:11434", model=model_name)
         registry = build_default_registry()
         supervisor = NyxSupervisor(llm_provider=provider, tool_registry=registry)
 

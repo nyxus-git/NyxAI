@@ -55,10 +55,10 @@ class Settings(BaseSettings):
         description="Ollama server base URL",
     )
     ollama_model: str = Field(
-        default="qwen2.5:3b",
+        default="qwen2.5:7b",
         description=(
             "Ollama model name. Never hardcoded — always read from environment. "
-            "Recommended for 6GB VRAM: qwen2.5:3b"
+            "Upgraded for 6GB VRAM: qwen2.5:7b (or qwen2.5:3b as lightweight fallback)"
         ),
     )
     ollama_timeout: float = Field(
@@ -96,16 +96,24 @@ class Settings(BaseSettings):
 
     # TTS (Text-to-Speech)
     tts_engine: str = Field(
-        default="kokoro",
-        description="TTS engine: 'kokoro' (English, high quality) or 'pyttsx3' (multilingual fallback).",
+        default="mithi",
+        description="TTS engine: 'mithi' (authentic Indian female voices), 'kokoro' (English), or 'pyttsx3' (fallback).",
     )
     tts_voice: str = Field(
-        default="af_heart",
-        description="Kokoro voice name. See kokoro-onnx docs for available voices.",
+        default="charvi",
+        description="TTS voice name: for Mithi ('charvi', 'ahana', 'vaidehi', 'malini', 'jahnavi') or Kokoro ('af_heart').",
     )
     tts_speed: float = Field(
         default=1.0,
         description="TTS speech speed multiplier. 1.0 = normal, 1.2 = slightly faster.",
+    )
+    tts_use_mithi: bool = Field(
+        default=True,
+        description="Whether to use Mithi for natural Indian female voices.",
+    )
+    tts_prefer_mithi_for_english: bool = Field(
+        default=True,
+        description="Whether to use Mithi's Indian female voice for English as well as Hindi/Marathi.",
     )
 
     # Audio recording

@@ -176,7 +176,7 @@ class CommandValidator:
             "google chrome": "google-chrome",
             "file manager": "dolphin",
         }
-        normalized = aliases.get(app_name, app_name)
+        normalized: str = aliases.get(app_name, app_name) or ""
         base_name = normalized.split()[0] if " " in normalized else normalized
         if normalized not in _ALLOWED_APPLICATIONS and base_name not in _ALLOWED_APPLICATIONS:
             return ValidationResult.failed(

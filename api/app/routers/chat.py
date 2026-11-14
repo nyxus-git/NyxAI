@@ -94,6 +94,7 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             conversation_id=body.conversation_id,
             mode=agent_mode,
             auto_approve=body.auto_approve,
+            voice_mode=body.voice_mode,
         )
 
     except LLMConnectionError as e:

@@ -41,6 +41,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional TTS voice ID override (e.g., 'af_heart', 'af_bella', 'af_nova').",
     )
+    voice_mode: bool = Field(
+        default=False,
+        description="When True, enforces concise 1-2 sentence spoken conversational pacing.",
+    )
     auto_approve: bool = Field(
         default=True,
         description="When True in agent mode, allowlisted confirmation tools (e.g. open_application) run automatically.",

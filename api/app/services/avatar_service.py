@@ -28,6 +28,11 @@ AVATAR_ASSETS_DIR = PROJECT_ROOT / "avatar" / "assets"
 AVATAR_CONFIG_PATH = AVATAR_ASSETS_DIR / "avatar_config.json"
 
 AVAILABLE_FEMALE_VOICES: list[dict[str, str]] = [
+    {"id": "charvi", "label": "Charvi (Warm Indian Female - Default)"},
+    {"id": "ahana", "label": "Ahana (Expressive Indian Female)"},
+    {"id": "vaidehi", "label": "Vaidehi (Soft Clear Indian Female)"},
+    {"id": "malini", "label": "Malini (Articulate Indian Female)"},
+    {"id": "jahnavi", "label": "Jahnavi (Bright Indian Female)"},
     {"id": "af_heart", "label": "Heart (Warm, Natural US)"},
     {"id": "af_bella", "label": "Bella (Expressive US)"},
     {"id": "af_nova", "label": "Nova (Clear, Bright US)"},

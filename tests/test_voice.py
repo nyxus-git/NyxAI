@@ -338,10 +338,52 @@ class TestEdgeTTSSpeaker:
 
     def test_edge_tts_routing_in_nyx_speaker(self) -> None:
         from voice.tts.speaker import EdgeTTSSpeaker, NyxTTSSpeaker
-        speaker = NyxTTSSpeaker(use_edge_neural=True)
+        speaker = NyxTTSSpeaker(use_edge_neural=True, use_mithi=False)
         provider_hi = speaker._get_provider("hi")
         assert isinstance(provider_hi, EdgeTTSSpeaker)
 
         provider_en = speaker._get_provider("en")
         assert provider_en is speaker._kokoro
+
+
+class TestMithiSpeaker:
+    """Tests for MithiSpeaker authentic Indian female TTS (Oomni/mithi-v2-flash)."""
+
+    def test_empty_text_returns_empty_bytes(self) -> None:
+        from voice.tts.speaker import MithiSpeaker
+        speaker = MithiSpeaker()
+        assert speaker.synthesize("   ") == b""
+
+    def test_female_voices_present(self) -> None:
+        from voice.tts.speaker import MithiSpeaker
+        assert "charvi" in MithiSpeaker.FEMALE_VOICES
+        assert "ahana" in MithiSpeaker.FEMALE_VOICES
+        assert "vaidehi" in MithiSpeaker.FEMALE_VOICES
+        assert "malini" in MithiSpeaker.FEMALE_VOICES
+        assert "jahnavi" in MithiSpeaker.FEMALE_VOICES
+
+    def test_clean_tts_text_strips_markdown_and_emojis(self) -> None:
+        from voice.tts.speaker import clean_tts_text
+        raw = "**नमस्ते!** `system` *ready* [link](http://example.com) 🚀"
+        cleaned = clean_tts_text(raw)
+        assert cleaned == "नमस्ते! system ready link"
+
+    def test_mithi_routing_in_nyx_speaker(self) -> None:
+        from voice.tts.speaker import MithiSpeaker, NyxTTSSpeaker
+        speaker = NyxTTSSpeaker(use_mithi=True, prefer_mithi_for_english=False)
+        provider_hi = speaker._get_provider("hi")
+        assert isinstance(provider_hi, MithiSpeaker)
+
+        provider_mr = speaker._get_provider("mr")
+        assert isinstance(provider_mr, MithiSpeaker)
+
+        provider_en = speaker._get_provider("en")
+        assert provider_en is speaker._kokoro
+
+    def test_mithi_english_routing_when_preferred(self) -> None:
+        from voice.tts.speaker import MithiSpeaker, NyxTTSSpeaker
+        speaker = NyxTTSSpeaker(use_mithi=True, prefer_mithi_for_english=True)
+        provider_en = speaker._get_provider("en")
+        assert isinstance(provider_en, MithiSpeaker)
+
 

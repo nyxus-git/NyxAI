@@ -129,6 +129,9 @@ class STTProvider(ABC):
 # Whisper Implementation
 
 
+DEFAULT_INDIC_PROMPT = "नमस्ते, नमस्कार, Hello! कैसे हो आप? काय चाललंय? Hi Nyx."
+
+
 class WhisperTranscriber(STTProvider):
     """
     Speech-to-text using faster-whisper (CTranslate2 backend).
@@ -156,7 +159,7 @@ class WhisperTranscriber(STTProvider):
         self._device = device
         self._compute_type = compute_type
         self._language = language if language != "auto" else None
-        self._initial_prompt = initial_prompt
+        self._initial_prompt = initial_prompt if initial_prompt is not None else DEFAULT_INDIC_PROMPT
         self._model: Any = None  # Lazy-loaded on first call
 
         logger.info(

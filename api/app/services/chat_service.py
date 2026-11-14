@@ -33,6 +33,7 @@ from core.memory import MemoryService
 
 if TYPE_CHECKING:
     from core.agent.agent import NyxAgent
+    from core.agent.supervisor import NyxSupervisor
 
 logger = get_logger(__name__)
 
@@ -48,7 +49,7 @@ class ChatService:
     Args:
         llm_provider: Any LLMProvider implementation. Injected at startup.
         memory_service: MemoryService for persistent history + memory injection.
-        agent: Optional NyxAgent for tool-calling mode. If None, agent mode
+        agent: Optional NyxAgent or NyxSupervisor for tool-calling mode. If None, agent mode
                falls back to companion mode with a warning.
     """
 
@@ -56,7 +57,7 @@ class ChatService:
         self,
         llm_provider: LLMProvider,
         memory_service: MemoryService,
-        agent: "NyxAgent | None" = None,
+        agent: "NyxAgent | NyxSupervisor | None" = None,
     ) -> None:
         self._llm = llm_provider
         self._memory = memory_service

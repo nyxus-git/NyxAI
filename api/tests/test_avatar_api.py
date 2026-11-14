@@ -7,6 +7,7 @@ and emotion + viseme payloads on /chat.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,7 +24,7 @@ from voice.tts.speaker import _float32_to_wav_bytes
 
 
 @pytest.fixture
-def avatar_client(tmp_path: Path) -> TestClient:
+def avatar_client(tmp_path: Path) -> Generator[TestClient, None, None]:
     """Isolated TestClient for /avatar endpoints backed by a temporary assets dir."""
     assets_dir = tmp_path / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)

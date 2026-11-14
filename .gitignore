@@ -58,6 +58,9 @@ docs/ROADMAP.md
 # Fine-tuning experiments & model outputs
 training/experiments/
 training/datasets/processed/
+models/
+*.safetensors
+*.onnx
 
 # ChromaDB local store
 chroma/
