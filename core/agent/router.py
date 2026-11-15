@@ -84,16 +84,21 @@ _PLANNING_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(update plan|next step in plan|complete plan step)\b", re.IGNORECASE),
 ]
 
-# Terminal & Shell
+# Terminal & Shell & Git
 _TERMINAL_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(terminal|run command|execute command|run shell|bash command|in terminal|shell command)\b", re.IGNORECASE),
     re.compile(r"\b(git status|docker ps|uptime|free -h|free -m|pytest|df -h|uname -a|cargo test)\b", re.IGNORECASE),
+    re.compile(r"\b(git\s+(status|diff|log|commit|branch|push|pull|checkout)|what\s+changed\s+in\s+git|recent\s+commits|git\s+history|show\s+diff|git\s+changes)\b", re.IGNORECASE),
 ]
 
 # Media & YouTube
 _MEDIA_PATTERNS: list[re.Pattern] = [
-    re.compile(r"\b(youtube|play (song|video|music|track|lofi|lo-fi)|pause music|resume music|play-pause)\b", re.IGNORECASE),
-    re.compile(r"\b(next track|previous track|volume up|volume down|stop music|pause media|resume media)\b", re.IGNORECASE),
+    re.compile(r"\b(youtube|play-pause)\b", re.IGNORECASE),
+    re.compile(r"\b(play|pause|resume|stop|skip)\s+(the\s+)?(music|song|media|track|video|lofi|lo-fi)\b", re.IGNORECASE),
+    re.compile(r"\b(next\s+(track|song)|previous\s+(track|song)|skip\s+song)\b", re.IGNORECASE),
+    re.compile(r"\b(volume\s+up|volume\s+down|set\s+volume|music\s+volume|media\s+volume|mute\s+(the\s+)?(music|media))\b", re.IGNORECASE),
+    re.compile(r"\b(what\s+song|what\s+is\s+playing|what's\s+playing|current\s+track|current\s+song|now\s+playing|who\s+is\s+singing)\b", re.IGNORECASE),
+    re.compile(r"\b(play\s+local\s+(music|song|audio)|play\s+mp3|play\s+audio\s+file)\b", re.IGNORECASE),
 ]
 
 # Communications (Email, Telegram, Discord)
@@ -101,6 +106,13 @@ _COMMS_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(check (my )?(email|emails|mail|inbox)|unread email|unread mail)\b", re.IGNORECASE),
     re.compile(r"\b(telegram|check telegram|send telegram)\b", re.IGNORECASE),
     re.compile(r"\b(discord|send discord|post to discord|discord alert)\b", re.IGNORECASE),
+]
+
+# Desktop Vision & Screen Awareness
+_VISION_PATTERNS: list[re.Pattern] = [
+    re.compile(r"\b(screenshot|take a screenshot|capture (the|my)?\s*screen|screen capture)\b", re.IGNORECASE),
+    re.compile(r"\b(what('s| is) on (the|my)?\s*screen|read (the|my)?\s*screen|see (the|my)?\s*screen|look at (the|my)?\s*screen)\b", re.IGNORECASE),
+    re.compile(r"\b(inspect screen|debug screen|error on (the|my)?\s*screen|check (the|my)?\s*screen for errors?|traceback on screen)\b", re.IGNORECASE),
 ]
 
 
@@ -143,6 +155,9 @@ class DomainClassifier:
                         or any(p.search(clean_msg) for p in _BROWSER_PATTERNS)
                         or any(p.search(clean_msg) for p in _FILE_PATTERNS)
                         or any(p.search(clean_msg) for p in _TASK_PATTERNS)
+                        or any(p.search(clean_msg) for p in _VISION_PATTERNS)
+                        or any(p.search(clean_msg) for p in _MEDIA_PATTERNS)
+                        or any(p.search(clean_msg) for p in _TERMINAL_PATTERNS)
                     )
                     if not has_tool_cue:
                         logger.debug("domain_classified_as_conversational", message=clean_msg)
@@ -202,6 +217,12 @@ class DomainClassifier:
         for pat in _COMMS_PATTERNS:
             if pat.search(clean_msg):
                 domains.add("comms")
+                break
+
+        # Check vision domain
+        for pat in _VISION_PATTERNS:
+            if pat.search(clean_msg):
+                domains.add("vision")
                 break
 
         # If a recent plan is being executed in history, keep planning & relevant tools alive

@@ -131,17 +131,31 @@ TOOL_NAME_ALIASES: dict[str, str] = {
     # Planning
     "make_plan": "create_plan",
     "plan": "create_plan",
-    # Terminal
+    # Terminal & Git
     "run_command": "execute_terminal_command",
     "exec_command": "execute_terminal_command",
     "shell_command": "execute_terminal_command",
     "terminal": "execute_terminal_command",
+    "git": "git_status",
+    "git_branch": "git_status",
+    "diff": "git_diff",
+    "git_difference": "git_diff",
+    "commit": "git_commit",
+    "git_commits": "git_log",
+    "recent_commits": "git_log",
     # Media & YouTube
     "youtube": "play_youtube",
     "play_video": "play_youtube",
     "play_song": "play_youtube",
     "play_music": "play_youtube",
     "media": "control_media",
+    "music": "control_music",
+    "playerctl": "control_music",
+    "current_song": "get_current_track",
+    "now_playing": "get_current_track",
+    "what_is_playing": "get_current_track",
+    "play_local": "play_local_music",
+    "play_offline_music": "play_local_music",
     # Communications
     "email": "check_emails",
     "emails": "check_emails",
@@ -155,6 +169,17 @@ TOOL_NAME_ALIASES: dict[str, str] = {
     "activate_tasks": "activate_all_tasks",
     "morning_routine": "activate_all_tasks",
     "daily_briefing": "activate_all_tasks",
+    # Vision & Screen Awareness
+    "screenshot": "capture_screen",
+    "take_screenshot": "capture_screen",
+    "screen_shot": "capture_screen",
+    "capture_desktop": "capture_screen",
+    "read_screen": "read_screen_text",
+    "screen_text": "read_screen_text",
+    "ocr_screen": "read_screen_text",
+    "inspect_errors": "inspect_screen_for_errors",
+    "debug_screen": "inspect_screen_for_errors",
+    "check_screen_errors": "inspect_screen_for_errors",
 }
 
 # Parameter Aliases per tool
@@ -566,11 +591,29 @@ def build_default_registry() -> ToolRegistry:
         EXECUTE_TERMINAL_DEF,
         execute_terminal_command,
     )
+    from tools.dev.git_tools import (
+        GIT_STATUS_DEF,
+        GIT_DIFF_DEF,
+        GIT_LOG_DEF,
+        GIT_COMMIT_DEF,
+        git_status,
+        git_diff,
+        git_log,
+        git_commit,
+    )
     from tools.youtube.youtube_tools import (
         PLAY_YOUTUBE_DEF,
         CONTROL_MEDIA_DEF,
         play_youtube,
         control_media,
+    )
+    from tools.music.music_tools import (
+        CONTROL_MUSIC_DEF,
+        GET_CURRENT_TRACK_DEF,
+        PLAY_LOCAL_MUSIC_DEF,
+        control_music,
+        get_current_track,
+        play_local_music,
     )
     from tools.comms.comms_tools import (
         CHECK_EMAILS_DEF,
@@ -581,6 +624,14 @@ def build_default_registry() -> ToolRegistry:
         check_telegram,
         send_discord_alert,
         activate_all_tasks,
+    )
+    from tools.vision.screen_tools import (
+        CAPTURE_SCREEN_DEF,
+        READ_SCREEN_TEXT_DEF,
+        INSPECT_SCREEN_ERRORS_DEF,
+        capture_screen,
+        read_screen_text,
+        inspect_screen_for_errors,
     )
 
     registry = ToolRegistry()
@@ -622,17 +673,29 @@ def build_default_registry() -> ToolRegistry:
     registry.register(CREATE_PLAN_DEF, create_plan)
     registry.register(UPDATE_PLAN_DEF, update_plan)
 
-    # ── Terminal tools
+    # ── Terminal & Developer tools
     registry.register(EXECUTE_TERMINAL_DEF, execute_terminal_command)
+    registry.register(GIT_STATUS_DEF, git_status)
+    registry.register(GIT_DIFF_DEF, git_diff)
+    registry.register(GIT_LOG_DEF, git_log)
+    registry.register(GIT_COMMIT_DEF, git_commit)
 
     # ── Media tools
     registry.register(PLAY_YOUTUBE_DEF, play_youtube)
     registry.register(CONTROL_MEDIA_DEF, control_media)
+    registry.register(CONTROL_MUSIC_DEF, control_music)
+    registry.register(GET_CURRENT_TRACK_DEF, get_current_track)
+    registry.register(PLAY_LOCAL_MUSIC_DEF, play_local_music)
 
     # ── Communications tools
     registry.register(CHECK_EMAILS_DEF, check_emails)
     registry.register(CHECK_TELEGRAM_DEF, check_telegram)
     registry.register(SEND_DISCORD_DEF, send_discord_alert)
+
+    # ── Vision tools
+    registry.register(CAPTURE_SCREEN_DEF, capture_screen)
+    registry.register(READ_SCREEN_TEXT_DEF, read_screen_text)
+    registry.register(INSPECT_SCREEN_ERRORS_DEF, inspect_screen_for_errors)
 
     logger.info(
         "tool_registry_built",

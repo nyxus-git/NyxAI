@@ -281,8 +281,7 @@ class KokoroSpeaker(TTSProvider):
             )
 
             logger.info("kokoro_speaking", text_preview=text[:60], sample_rate=sample_rate)
-            sd.play(samples, samplerate=sample_rate)
-            sd.wait()  # Block until audio finishes
+            play_audio_array(samples, sample_rate=sample_rate)
             logger.debug("kokoro_speaking_done")
 
         except Exception as e:
@@ -462,8 +461,7 @@ engine.runAndWait()
                 audio_int16 = np.frombuffer(raw_bytes, dtype=np.int16)
                 audio_float32 = audio_int16.astype(np.float32) / 32768.0
 
-            sd.play(audio_float32, samplerate=sample_rate)
-            sd.wait()
+            play_audio_array(audio_float32, sample_rate=sample_rate)
             logger.debug("pyttsx3_speaking_done")
         except Exception as e:
             logger.warning("pyttsx3_speaking_failed", error=str(e), hint="Ensure espeak-ng and sounddevice are installed")
@@ -934,25 +932,107 @@ def _float32_to_wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:
         return buf.getvalue()
 
 
-def play_wav_bytes(wav_bytes: bytes) -> None:
-    """
-    Play WAV audio bytes through the default audio output.
+# ── Barge-In and Playback Interruption Subsystem ──────────────────────────────
 
-    Convenience function for playing pre-synthesized audio.
+_PLAYBACK_CANCEL_EVENT = threading.Event()
+_PLAYBACK_ACTIVE = threading.Event()
+
+
+def cancel_current_playback() -> bool:
+    """
+    Cancel any ongoing TTS playback immediately (barge-in / interruptibility).
+
+    Returns:
+        True if an active playback was interrupted, False otherwise.
+    """
+    if _PLAYBACK_ACTIVE.is_set():
+        _PLAYBACK_CANCEL_EVENT.set()
+        try:
+            import sounddevice as sd
+            sd.stop()
+        except Exception:
+            pass
+        logger.info("tts_playback_cancel_requested")
+        return True
+    return False
+
+
+def is_playback_active() -> bool:
+    """Check if audio is currently playing through NyxAI."""
+    return _PLAYBACK_ACTIVE.is_set()
+
+
+def play_audio_array(
+    audio_data: np.ndarray,
+    sample_rate: int,
+    interruptible: bool = True,
+) -> bool:
+    """
+    Play a numpy float32 or int16 audio array through the default output with barge-in support.
+
+    Args:
+        audio_data: Numpy array of audio samples (float32 or int16).
+        sample_rate: Sample rate in Hz.
+        interruptible: If True, continuously checks _PLAYBACK_CANCEL_EVENT to allow instant cutoff.
+
+    Returns:
+        True if played to completion, False if interrupted or cancelled.
+    """
+    import time
+    import sounddevice as sd
+
+    if audio_data.dtype == np.int16:
+        float32_data = audio_data.astype(np.float32) / 32768.0
+    else:
+        float32_data = audio_data.astype(np.float32)
+
+    total_duration = len(float32_data) / float(sample_rate)
+
+    _PLAYBACK_CANCEL_EVENT.clear()
+    _PLAYBACK_ACTIVE.set()
+
+    try:
+        sd.play(float32_data, samplerate=sample_rate)
+        start_time = time.time()
+
+        # Check for barge-in every 40ms without busy-spinning
+        while time.time() - start_time < total_duration:
+            if interruptible and _PLAYBACK_CANCEL_EVENT.is_set():
+                sd.stop()
+                logger.info("tts_playback_barge_in_cut_off", elapsed_s=round(time.time() - start_time, 2))
+                return False
+            time.sleep(0.04)
+
+        return True
+    except Exception as exc:
+        logger.warning("play_audio_array_failed", error=str(exc))
+        return False
+    finally:
+        _PLAYBACK_ACTIVE.clear()
+        _PLAYBACK_CANCEL_EVENT.clear()
+
+
+def play_wav_bytes(wav_bytes: bytes, interruptible: bool = True) -> bool:
+    """
+    Play WAV audio bytes through the default audio output with barge-in support.
 
     Args:
         wav_bytes: WAV file bytes to play.
+        interruptible: If True, allows cancellation via cancel_current_playback().
+
+    Returns:
+        True if played to completion, False if cancelled or error.
     """
     import io
     import wave
 
-    import sounddevice as sd
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
+            sample_rate = wf.getframerate()
+            raw_frames = wf.readframes(wf.getnframes())
+            int16_data = np.frombuffer(raw_frames, dtype=np.int16)
 
-    with wave.open(io.BytesIO(wav_bytes), "rb") as wf:
-        sample_rate = wf.getframerate()
-        raw_frames = wf.readframes(wf.getnframes())
-        int16_data = np.frombuffer(raw_frames, dtype=np.int16)
-        float32_data = int16_data.astype(np.float32) / 32768.0
-
-    sd.play(float32_data, samplerate=sample_rate)
-    sd.wait()
+        return play_audio_array(int16_data, sample_rate=sample_rate, interruptible=interruptible)
+    except Exception as exc:
+        logger.error("play_wav_bytes_failed", error=str(exc))
+        return False

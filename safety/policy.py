@@ -45,6 +45,11 @@ TOOL_POLICY: dict[str, PermissionLevel] = {
     "create_plan": PermissionLevel.SAFE,
     "update_plan": PermissionLevel.SAFE,
 
+    # ── Vision Tools (Desktop Vision & Screen Awareness)
+    "capture_screen": PermissionLevel.SAFE,
+    "read_screen_text": PermissionLevel.SAFE,
+    "inspect_screen_for_errors": PermissionLevel.SAFE,
+
     # ── Application & File Mutation Tools — Require confirmation unless approved
     "open_application": PermissionLevel.CONFIRMATION,
     "move_file": PermissionLevel.CONFIRMATION,
@@ -58,11 +63,20 @@ TOOL_POLICY: dict[str, PermissionLevel] = {
     # ── Media & Communications Tools
     "play_youtube": PermissionLevel.CONFIRMATION,
     "control_media": PermissionLevel.SAFE,
+    "control_music": PermissionLevel.SAFE,
+    "get_current_track": PermissionLevel.SAFE,
+    "play_local_music": PermissionLevel.CONFIRMATION,
     "check_emails": PermissionLevel.SAFE,
     "check_telegram": PermissionLevel.SAFE,
     "send_discord_alert": PermissionLevel.CONFIRMATION,
     "activate_all_tasks": PermissionLevel.SAFE,
     "execute_terminal_command": PermissionLevel.CONFIRMATION,
+
+    # ── Developer & Git Tools
+    "git_status": PermissionLevel.SAFE,
+    "git_diff": PermissionLevel.SAFE,
+    "git_log": PermissionLevel.SAFE,
+    "git_commit": PermissionLevel.CONFIRMATION,
 
     # ── Blocked forever
     # Shell execution is NEVER exposed to the LLM directly.

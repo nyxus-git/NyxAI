@@ -384,10 +384,17 @@ async def activate_all_tasks() -> ToolResult:
 
     task_str = f"{task_count} pending task(s)" if task_count > 0 else "no pending tasks"
 
-    briefing = (
-        f"JARVIS Routine Activated: System status nominal — Battery at {bat_pct}%, "
-        f"CPU load at {cpu_pct}%, RAM usage at {ram_pct}%. You have {task_str}."
-    )
+    briefing_lines = [
+        f"JARVIS Routine Activated: System status nominal — Battery at {bat_pct}%, CPU load at {cpu_pct}%, RAM usage at {ram_pct}%. You have {task_str}."
+    ]
+    if gpu.success and gpu_data and "name" in gpu_data:
+        gpu_name = gpu_data.get("name")
+        gpu_temp = gpu_data.get("temperature_c")
+        briefing_lines.append(f"• **GPU:** {gpu_name} ({gpu_temp}°C)")
+    if pending_tasks:
+        briefing_lines.append("• **Top Agenda Tasks:** " + ", ".join(f"'{t['title']}'" for t in pending_tasks[:3]))
+
+    briefing = "\n\n".join(briefing_lines)
 
     logger.info("activate_all_tasks_completed", pending_tasks=task_count)
 

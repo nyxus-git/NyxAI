@@ -79,6 +79,13 @@ class PushToTalkListener:
         print("\n🎤 Press Enter to start recording...")
         input()  # Wait for first Enter
 
+        # Cancel any ongoing assistant speech immediately on user input
+        try:
+            from voice.tts.speaker import cancel_current_playback
+            cancel_current_playback()
+        except Exception:
+            pass
+
         recorded_chunks: list[np.ndarray] = []
         stop_event = __import__("threading").Event()
 
@@ -225,6 +232,13 @@ class HandsFreeVoiceListener:
         wake_word = self.detector.listen_for_wake_word(timeout_seconds=wake_timeout_seconds)
         if not wake_word:
             return None, b""
+
+        # Cancel any ongoing assistant speech immediately on wake word detection (barge-in)
+        try:
+            from voice.tts.speaker import cancel_current_playback
+            cancel_current_playback()
+        except Exception:
+            pass
 
         logger.info("hands_free_wake_word_activated", wake_word=wake_word)
 

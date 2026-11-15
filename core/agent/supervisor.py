@@ -68,6 +68,7 @@ class NyxSupervisor:
         self.system_agent = SpecialistAgent("SystemAgent", "system", tool_registry)
         self.routine_agent = SpecialistAgent("RoutineAgent", "system", tool_registry)
         self.research_agent = SpecialistAgent("ResearchAgent", "browser", tool_registry)
+        self.vision_agent = SpecialistAgent("VisionAgent", "vision", tool_registry)
 
         logger.info("nyx_supervisor_initialized")
 
@@ -85,7 +86,7 @@ class NyxSupervisor:
         clean_msg = message.strip().lower()
 
         # 1. Fast-path check for composite "activate all tasks" / "morning briefing"
-        if any(trigger in clean_msg for trigger in ("activate all tasks", "activate tasks", "morning routine", "daily briefing", "run all tasks")):
+        if any(trigger in clean_msg for trigger in ("activate all tasks", "activate tasks", "morning routine", "daily briefing", "morning briefing", "system briefing", "brief me", "run all tasks")):
             logger.info("supervisor_running_activate_all_tasks_routine")
             res = await self.routine_agent.execute("activate_all_tasks", {})
             return AgentResponse(
