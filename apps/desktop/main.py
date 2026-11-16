@@ -314,23 +314,26 @@ async def check_status() -> int:
 
 async def run_hands_free_listener_task(
     stop_event: asyncio.Event,
-    wake_word: str = "hey_jarvis",
+    wake_word: str = "hey_nyx",
 ) -> None:
     """
     Continuous background hands-free voice task.
     Listens for 'Hey Nyx' / 'Hey Jarvis', triggers activation chime,
     buffers speech with VAD, sends audio to backend, speaks response,
-    and posts desktop notifications.
+    prints to console like JARVIS, and posts desktop notifications.
     """
     from voice.wakeword.listener import HandsFreeVoiceListener
     from voice.tts.speaker import NyxTTSSpeaker
+    from voice.stt.transcriber import WhisperTranscriber
 
-    listener = HandsFreeVoiceListener(wake_word=wake_word, sample_rate=16000)
+    listener = HandsFreeVoiceListener(wake_words=["hey_jarvis", "hey_nyx"], sample_rate=16000)
     speaker = NyxTTSSpeaker(prefer_mithi_for_english=True)
+    transcriber = WhisperTranscriber(model="small")
     loop = asyncio.get_running_loop()
 
-    logger.info("hands_free_listener_started", message=f"Listening for '{wake_word}'...")
+    logger.info("hands_free_listener_started", message="Listening for 'Hey Nyx' or 'Hey Jarvis'...")
     send_desktop_notification("NyxAI Online", "Hands-free listening is active. Say 'Hey Nyx' anytime.")
+    print("🎧 Listening for wake word ('Hey Nyx' / 'Hey Jarvis')...\n")
 
     while not stop_event.is_set():
         try:
@@ -339,6 +342,7 @@ async def run_hands_free_listener_task(
             if not wav_bytes or stop_event.is_set():
                 continue
 
+            print("\n⚡ [JARVIS] Wake Word Detected! Processing your voice command...")
             logger.info("hands_free_turn_captured", size_bytes=len(wav_bytes))
 
             # Verify backend is running
@@ -351,21 +355,25 @@ async def run_hands_free_listener_task(
                     backend_ok = False
 
             if not backend_ok:
+                print("⚠️  NyxAI Core backend is not responding on port 19420. Start it with './scripts/run.sh start'")
                 logger.warning("backend_not_ready_for_hands_free")
                 continue
 
-            from voice.stt.transcriber import WhisperTranscriber
-            transcriber = WhisperTranscriber(model="small")
+            print("🔍 Transcribing speech...")
             stt_result = transcriber.transcribe(wav_bytes)
 
             query = stt_result.text.strip()
             if not query:
+                print("⚠️  No clear speech recognized. Resuming listening...")
                 logger.info("empty_speech_transcription")
                 continue
 
-            logger.info("hands_free_user_query", query=query, lang=stt_result.language)
+            lang_emoji = {"en": "🇬🇧", "hi": "🇮🇳", "mr": "🇮🇳"}.get(stt_result.language, "🌐")
+            print(f"\n{lang_emoji} You ({stt_result.language}): {query}")
+            print("💭 NyxAI is thinking...")
 
             # Route to backend agent with auto_approve enabled for voice
+            tool_used = None
             async with httpx.AsyncClient(timeout=60.0) as client:
                 chat_resp = await client.post(
                     f"{BACKEND_URL}/chat",
@@ -378,30 +386,46 @@ async def run_hands_free_listener_task(
                 )
                 chat_data = chat_resp.json()
                 reply = chat_data.get("response") or chat_data.get("reply", "")
+                tool_used = chat_data.get("tool_used")
 
-            logger.info("hands_free_agent_reply", reply_preview=reply[:80])
+            if tool_used:
+                print(f"🔧 Tool executed: {tool_used}")
+
+            print(f"\n🤖 NyxAI: {reply}\n")
+            print("🔊 Speaking response...")
 
             # Post Linux desktop notification
             send_desktop_notification(f"NyxAI ({stt_result.language.upper()})", reply)
 
-            # Speak response
-            speaker.speak(reply, language=stt_result.language)
+            # Speak response (barge-in enabled)
+            await loop.run_in_executor(
+                None,
+                lambda: speaker.speak(reply, language=stt_result.language),
+            )
+
+            print("🎧 Ready! Listening for 'Hey Nyx' / 'Hey Jarvis'...\n")
 
         except asyncio.CancelledError:
             break
         except Exception as e:
             logger.error("hands_free_turn_error", error=str(e))
+            print(f"⚠️  Voice turn error: {e}")
             await asyncio.sleep(0.5)
 
 
-async def run_listen(wake_word: str = "hey_jarvis") -> None:
-    """Run interactive hands-free listening in the foreground."""
+async def run_listen(wake_word: str = "hey_nyx") -> None:
+    """Run interactive hands-free listening in the foreground (JARVIS Mode)."""
     configure_logging("INFO")
-    print(f"\n[NyxAI] Continuous Hands-Free Mode active. Say '{wake_word}' or 'Hey Nyx' to trigger...")
-    print("Press Ctrl+C to stop.\n")
+    print("\n" + "═" * 62)
+    print("  🤖 NyxAI — JARVIS Terminal HUD (Hands-Free Voice Mode)")
+    print("  ⚡ Say 'Hey Nyx' or 'Hey Jarvis' anytime to speak")
+    print("  🔊 Natural Female Voice (Mithi/Charvi) with Barge-In active")
+    print("  ⏹️  Press Ctrl+C to stop")
+    print("═" * 62 + "\n")
     stop_event = asyncio.Event()
 
     def _sig_handler() -> None:
+        print("\n\n⏹️  Stopping JARVIS mode...")
         stop_event.set()
 
     loop = asyncio.get_running_loop()

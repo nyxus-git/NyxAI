@@ -34,6 +34,8 @@ class WakeWordDetector:
 
     Processes streaming audio frames and fires triggers when acoustic
     confidence exceeds the detection threshold.
+    Supports both openWakeWord ONNX ('hey_jarvis') and lightweight
+    semantic keyword spotting ('Hey Nyx', 'Nyx', 'Jarvis').
     """
 
     def __init__(
@@ -45,12 +47,13 @@ class WakeWordDetector:
         self.threshold = threshold
         self.vad = VoiceActivityDetector(sample_rate=SAMPLE_RATE)
         self._model: Any = None
+        self._tiny_model: Any = None
         self._is_ready = False
 
         self._init_engine()
 
     def _init_engine(self) -> None:
-        """Initialize the openWakeWord ONNX model engine."""
+        """Initialize the openWakeWord ONNX model engine and lightweight semantic spotter."""
         try:
             from openwakeword.model import Model
 
@@ -66,6 +69,44 @@ class WakeWordDetector:
         except Exception as e:
             logger.warning("wake_word_engine_fallback", reason=str(e))
             self._is_ready = False
+
+        # Load ultra-fast CPU Whisper tiny (39MB) for 'Hey Nyx' detection
+        try:
+            from faster_whisper import WhisperModel
+
+            self._tiny_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            logger.debug("semantic_wake_word_spotter_initialized")
+        except Exception as exc:
+            logger.debug("semantic_wake_word_spotter_unavailable", error=str(exc))
+            self._tiny_model = None
+
+    def check_speech_for_keyword(self, pcm_int16: np.ndarray) -> str | None:
+        """
+        Verify if a captured audio clip contains 'Hey Nyx', 'Nyx', 'Jarvis', or Hindi equivalents.
+        """
+        if self._tiny_model is None or len(pcm_int16) < 4000:
+            return None
+        try:
+            import re
+
+            float32_clip = pcm_int16.astype(np.float32) / 32768.0
+            segments, _ = self._tiny_model.transcribe(
+                float32_clip,
+                language="en",
+                initial_prompt="Hey Nyx, Nyx, Hey Jarvis, Jarvis, Hello Nyx",
+                beam_size=1,
+            )
+            text = " ".join(seg.text for seg in segments).strip().lower()
+            if not text:
+                return None
+
+            clean_text = re.sub(r"[^\w\s]", "", text)
+            if re.search(r"\b(hey\s+)?(nyx|nix|niks|nicks|jarvis)\b", clean_text) or "निक्स" in clean_text or "nyx" in clean_text:
+                logger.info("semantic_wake_word_detected", text=clean_text)
+                return "hey_nyx"
+        except Exception as exc:
+            logger.debug("keyword_check_error", error=str(exc))
+        return None
 
     def process_frame(self, frame: np.ndarray) -> str | None:
         """
@@ -125,6 +166,7 @@ class WakeWordDetector:
 
         logger.info("wake_word_listening_started", target_words=self.wake_words)
         detected_word: list[str] = []
+        speech_chunks: list[np.ndarray] = []
         start_time = time.time()
 
         def audio_callback(indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
@@ -134,9 +176,31 @@ class WakeWordDetector:
                 return
 
             flat_data = indata.flatten()
+
+            # 1. Real-time openWakeWord ONNX check (fastest path: ~5ms)
             hit = self.process_frame(flat_data)
             if hit:
                 detected_word.append(hit)
+                return
+
+            # 2. Semantic 'Hey Nyx' detection on detected voice speech frames
+            if self.vad.is_speech(flat_data):
+                speech_chunks.append(flat_data.copy())
+                # If speech duration is between 0.5s and 1.2s (7 to 15 chunks of 80ms)
+                if len(speech_chunks) >= 7 and len(speech_chunks) % 4 == 0:
+                    clip = np.concatenate(speech_chunks[-14:], axis=0)
+                    kw = self.check_speech_for_keyword(clip)
+                    if kw:
+                        detected_word.append(kw)
+                        speech_chunks.clear()
+            else:
+                # User paused speaking: check what was captured
+                if len(speech_chunks) >= 5:
+                    clip = np.concatenate(speech_chunks, axis=0)
+                    kw = self.check_speech_for_keyword(clip)
+                    if kw:
+                        detected_word.append(kw)
+                speech_chunks.clear()
 
         with sd.InputStream(
             samplerate=SAMPLE_RATE,

@@ -242,9 +242,12 @@ def main() -> None:
     # nyx chat
     subparsers.add_parser("chat", help="Start interactive terminal conversation REPL")
 
-    # nyx routine / jarvis
-    subparsers.add_parser("routine", help="Run composite Jarvis master routine (all tasks)")
-    subparsers.add_parser("jarvis", help="Alias for 'routine'")
+    # nyx routine
+    subparsers.add_parser("routine", help="Run composite master routine (all tasks & hardware briefing)")
+
+    # nyx jarvis / listen
+    subparsers.add_parser("jarvis", help="Start hands-free JARVIS voice agent in terminal (Say 'Hey Nyx')")
+    subparsers.add_parser("listen", help="Alias for 'jarvis'")
 
     # nyx system
     subparsers.add_parser("system", help="Display hardware health and multi-agent swarm telemetry")
@@ -253,28 +256,35 @@ def main() -> None:
     daemon_parser = subparsers.add_parser("daemon", help="Control or inspect background desktop daemon")
     daemon_parser.add_argument("action", choices=["status", "toggle-ui"], default="status", nargs="?")
 
-    # nyx listen
-    subparsers.add_parser("listen", help="Run hands-free wake word listener directly in console")
-
     # nyx voice
-    subparsers.add_parser("voice", help="Run push-to-talk voice recording session")
+    voice_parser = subparsers.add_parser("voice", help="Run interactive voice session (Push-to-Talk or hands-free)")
+    voice_parser.add_argument(
+        "-hf",
+        "--hands-free",
+        action="store_true",
+        help="Run in continuous hands-free mode triggered by 'Hey Nyx'",
+    )
 
     args = parser.parse_args()
 
     if args.subcommand == "chat":
         asyncio.run(run_chat_repl())
-    elif args.subcommand in ("routine", "jarvis"):
+    elif args.subcommand == "routine":
         asyncio.run(run_master_routine())
+    elif args.subcommand in ("jarvis", "listen"):
+        from apps.desktop.main import run_listen
+        asyncio.run(run_listen())
     elif args.subcommand == "system":
         asyncio.run(run_system_diagnostics())
     elif args.subcommand == "daemon":
         asyncio.run(run_daemon_command(args.action))
-    elif args.subcommand == "listen":
-        from apps.desktop.main import run_listen
-        asyncio.run(run_listen())
     elif args.subcommand == "voice":
-        from apps.desktop.main import run_ptt
-        asyncio.run(run_ptt())
+        if getattr(args, "hands_free", False):
+            from apps.desktop.main import run_listen
+            asyncio.run(run_listen())
+        else:
+            from apps.desktop.main import run_ptt
+            asyncio.run(run_ptt())
     else:
         parser.print_help()
 
