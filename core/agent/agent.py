@@ -150,11 +150,25 @@ class NyxAgent:
         from core.brain.language import detect_response_language
         input_lang = detect_response_language(message)
         if input_lang == "en":
-            system_content += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in English. You MUST formulate your entire response in English. Never reply in Hindi or Marathi."
+            system_content += (
+                "\n\n## CURRENT LANGUAGE: ENGLISH\n"
+                "- The user is speaking English. You MUST reply ONLY in natural, warm, conversational English.\n"
+                "- Never include Hindi or Marathi words or translations."
+            )
         elif input_lang == "hi":
-            system_content += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Hindi (हिंदी). You MUST formulate your response in pure spoken Hindi using feminine verbs (स्त्रीलिंग). Never use Marathi words."
+            system_content += (
+                "\n\n## CURRENT LANGUAGE: HINDI (हिंदी)\n"
+                "- The user is speaking Hindi. You MUST reply ONLY in pure, natural spoken Hindi (हिंदी).\n"
+                "- NEVER use Marathi words under any circumstances (NEVER use 'मी', 'आहे', 'आणि', 'काय', 'चाललंय', 'मदत').\n"
+                "- Always use feminine verb endings (स्त्रीलिंग: 'कर सकती हूँ', 'बता रही हूँ', 'तैयार हूँ')."
+            )
         elif input_lang == "mr":
-            system_content += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Marathi (मराठी). You MUST formulate your response in pure spoken Marathi using feminine verbs (स्त्रीलिंग). Never use Hindi words."
+            system_content += (
+                "\n\n## CURRENT LANGUAGE: MARATHI (मराठी)\n"
+                "- The user is speaking Marathi. You MUST reply ONLY in pure, natural spoken Marathi (मराठी).\n"
+                "- NEVER use Hindi words under any circumstances (NEVER use 'मैं', 'हूँ', 'है', 'आप', 'नमस्ते', 'मदद', 'कैसे').\n"
+                "- Always use feminine verb endings (स्त्रीलिंग: 'करू शकते', 'सांगते', 'छान आहे')."
+            )
         
         # Media safeguard
         system_content += "\n\n## Media & Browser Safeguard\nNEVER open YouTube, launch web browsers, or play songs unless the user explicitly requested it with words like 'YouTube' or 'play'."
@@ -255,8 +269,10 @@ class NyxAgent:
                     conversation_prefix=conv_id,
                     iteration=iterations,
                 )
+                from core.brain.language import normalize_response_text
+                norm_content = normalize_response_text(llm_response.content)
                 return AgentResponse(
-                    content=llm_response.content,
+                    content=norm_content,
                     model=llm_response.model,
                     tool_used=tool_used,
                     tool_result=tool_result_data,
@@ -342,8 +358,10 @@ class NyxAgent:
         # Make one final LLM call to synthesize a response from what we have
         final_response = await self._llm.chat(messages=messages)
 
+        from core.brain.language import normalize_response_text
+        norm_final = normalize_response_text(final_response.content)
         return AgentResponse(
-            content=final_response.content,
+            content=norm_final,
             model=final_response.model,
             tool_used=tool_used,
             tool_result=tool_result_data,

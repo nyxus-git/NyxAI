@@ -164,11 +164,30 @@ class ChatService:
         from core.brain.language import detect_response_language
         input_lang = detect_response_language(query)
         if input_lang == "en":
-            base_prompt += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in English. You MUST formulate your entire response in English only. Never reply in Hindi or Marathi."
+            base_prompt += (
+                "\n\n## CURRENT LANGUAGE: ENGLISH\n"
+                "- The user is speaking English. You MUST reply ONLY in natural, warm, conversational English.\n"
+                "- Never include Hindi or Marathi words or parenthetical translations.\n"
+                "- Example: \"Hello! I'm doing great, thanks for asking! How's your day going?\""
+            )
         elif input_lang == "hi":
-            base_prompt += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Hindi (हिंदी). You MUST formulate your response in pure spoken Hindi using feminine verbs (स्त्रीलिंग). Never use Marathi words."
+            base_prompt += (
+                "\n\n## CURRENT LANGUAGE: HINDI (हिंदी)\n"
+                "- The user is speaking Hindi. You MUST reply ONLY in pure, natural spoken Hindi (हिंदी).\n"
+                "- NEVER use Marathi words under any circumstances (NEVER use 'मी', 'आहे', 'आणि', 'काय', 'चाललंय', 'होती', 'मदत').\n"
+                "- Always use feminine verb endings (स्त्रीलिंग: 'कर सकती हूँ', 'बता रही हूँ', 'तैयार हूँ', 'सकती हूँ').\n"
+                "- Always use 'मैं' for I (never single-letter 'म').\n"
+                "- Example: \"नमस्ते! मैं बिल्कुल ठीक हूँ। बताइए, आज मैं आपकी क्या सहायता कर सकती हूँ?\""
+            )
         elif input_lang == "mr":
-            base_prompt += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Marathi (मराठी). You MUST formulate your entire response in pure spoken Marathi using feminine verbs (स्त्रीलिंगी). Never use Hindi words like 'हूँ', 'आप', 'नमस्ते', 'मदद'."
+            base_prompt += (
+                "\n\n## CURRENT LANGUAGE: MARATHI (मराठी)\n"
+                "- The user is speaking Marathi. You MUST reply ONLY in pure, natural spoken Marathi (मराठी).\n"
+                "- NEVER use Hindi words under any circumstances (NEVER use 'मैं', 'हूँ', 'है', 'आप', 'नमस्ते', 'मदद', 'कैसे').\n"
+                "- Always use feminine verb endings (स्त्रीलिंग: 'करू शकते', 'सांगते', 'छान आहे').\n"
+                "- Always use 'मी' for I (never single-letter 'म').\n"
+                "- Example: \"नमस्कार! मी एकदम छान आहे. सांगा, आज आपण काय नवीन करूया?\""
+            )
 
         memory_context = await self._memory.build_system_prompt_context(query=query)
 
@@ -214,6 +233,10 @@ class ChatService:
             max_tokens=220 if voice_mode else None,
         )
 
+        from core.brain.language import detect_response_language, normalize_response_text
+        detected_lang = detect_response_language(llm_response.content)
+        reply_content = normalize_response_text(llm_response.content, detected_lang)
+
         # Persist both messages to SQLite
         await self._memory.short_term.save_message(
             conversation_id=conv_key,
@@ -223,7 +246,7 @@ class ChatService:
         await self._memory.short_term.save_message(
             conversation_id=conv_key,
             role=MessageRole.ASSISTANT,
-            content=llm_response.content,
+            content=reply_content,
         )
 
         logger.info(
@@ -234,7 +257,7 @@ class ChatService:
             completion_tokens=llm_response.completion_tokens,
         )
 
-        return llm_response.content, None, None
+        return reply_content, None, None
 
     async def _handle_agent(
         self,

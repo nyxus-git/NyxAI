@@ -21,7 +21,7 @@ const INITIAL_CONFIG: AvatarConfig = {
   mode: 'stylized',
   name: 'Nyx',
   tagline: 'Local Desktop AI Companion',
-  voice: 'af_heart',
+  voice: 'en-US-AvaMultilingualNeural',
   photo_url: null,
   model_url: null,
   landmarks: DEFAULT_AVATAR_LANDMARKS,

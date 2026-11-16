@@ -100,8 +100,8 @@ class Settings(BaseSettings):
         description="TTS engine: 'edge_tts' (high-fidelity neural female voices), 'kokoro' (English), 'mithi', or 'pyttsx3' (fallback).",
     )
     tts_voice: str = Field(
-        default="en-IN-NeerjaExpressiveNeural",
-        description="TTS voice name: for Edge ('en-IN-NeerjaExpressiveNeural', 'hi-IN-SwaraNeural', 'mr-IN-AarohiNeural') or Kokoro ('af_heart').",
+        default="en-US-AvaMultilingualNeural",
+        description="TTS voice name: for Edge ('en-US-AvaMultilingualNeural', 'en-IN-NeerjaExpressiveNeural', 'hi-IN-SwaraNeural', 'mr-IN-AarohiNeural') or Kokoro ('af_heart').",
     )
     tts_speed: float = Field(
         default=1.0,

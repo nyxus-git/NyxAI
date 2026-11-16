@@ -49,11 +49,12 @@ export const CharacterModal: React.FC<CharacterModalProps> = ({
   const previewBoxRef = useRef<HTMLDivElement | null>(null);
 
   const voices = config.available_voices ?? [
-    { id: 'af_heart', label: 'Heart (Warm, Natural US)' },
-    { id: 'af_bella', label: 'Bella (Expressive US)' },
-    { id: 'af_nova', label: 'Nova (Clear, Bright US)' },
-    { id: 'af_nicole', label: 'Nicole (Soft, Calm US)' },
-    { id: 'bf_emma', label: 'Emma (British Warm)' },
+    { id: 'en-US-AvaMultilingualNeural', label: 'Ava (Expressive & Natural - Copilot AI)' },
+    { id: 'en-IN-NeerjaExpressiveNeural', label: 'Neerja (Expressive Indian English - Neural)' },
+    { id: 'hi-IN-SwaraNeural', label: 'Swara (Natural Hindi - Neural)' },
+    { id: 'mr-IN-AarohiNeural', label: 'Aarohi (Natural Marathi - Neural)' },
+    { id: 'en-US-JennyNeural', label: 'Jenny (Warm US English - Neural)' },
+    { id: 'af_heart', label: 'Heart (Warm Natural US - Kokoro CPU)' },
   ];
 
   const handlePhotoUpload = async (file: File) => {

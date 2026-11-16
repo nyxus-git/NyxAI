@@ -28,6 +28,7 @@ AVATAR_ASSETS_DIR = PROJECT_ROOT / "avatar" / "assets"
 AVATAR_CONFIG_PATH = AVATAR_ASSETS_DIR / "avatar_config.json"
 
 AVAILABLE_FEMALE_VOICES: list[dict[str, str]] = [
+    {"id": "en-US-AvaMultilingualNeural", "label": "Ava (Expressive & Natural - Copilot AI)"},
     {"id": "en-IN-NeerjaExpressiveNeural", "label": "Neerja (Expressive Indian English - Neural)"},
     {"id": "hi-IN-SwaraNeural", "label": "Swara (Natural Hindi - Neural)"},
     {"id": "mr-IN-AarohiNeural", "label": "Aarohi (Natural Marathi - Neural)"},
@@ -73,7 +74,7 @@ class AvatarConfig(BaseModel):
     mode: Literal["photo", "vrm", "stylized"] = "stylized"
     name: str = Field(default="Nyx", min_length=1, max_length=40)
     tagline: str = Field(default="Local Desktop AI Companion", max_length=80)
-    voice: str = Field(default="af_heart")
+    voice: str = Field(default="en-US-AvaMultilingualNeural")
     photo_url: str | None = None
     model_url: str | None = None
     landmarks: AvatarLandmarks = Field(default_factory=AvatarLandmarks)

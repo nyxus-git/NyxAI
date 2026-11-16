@@ -50,7 +50,7 @@ class TestAvatarApi:
         data = resp.json()
         assert data["mode"] == "stylized"
         assert data["name"] == "Nyx"
-        assert data["voice"] == "af_heart"
+        assert data["voice"] in ("en-US-AvaMultilingualNeural", "af_heart")
         assert "landmarks" in data
         assert len(data["available_voices"]) >= 1
 

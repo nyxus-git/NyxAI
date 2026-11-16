@@ -47,13 +47,15 @@ def clean_tts_text(text: str) -> str:
     """
     Clean text for text-to-speech engines:
     - Removes markdown formatting (code blocks, backticks, bold, italic, links, headers).
-    - Removes URLs and emoji characters.
-    - Normalizes consecutive whitespace.
+    - Removes stage directions (*smiles*, *laughs*, (smiling)).
+    - Removes parenthetical translations that clutter spoken output.
+    - Normalizes pauses, Devanagari typos, URLs, and emoji characters.
     """
     if not text:
         return ""
+    t = text
     # Remove code blocks
-    t = re.sub(r"```[\s\S]*?```", "", text)
+    t = re.sub(r"```[\s\S]*?```", "", t)
     # Remove inline code
     t = re.sub(r"`([^`]+)`", r"\1", t)
     # Remove markdown links: [label](url) -> label
@@ -62,6 +64,13 @@ def clean_tts_text(text: str) -> str:
     t = re.sub(r"https?://\S+", "", t)
     # Remove markdown headers (#, ##, etc.)
     t = re.sub(r"^#{1,6}\s+", "", t, flags=re.MULTILINE)
+    # Remove stage directions in asterisks: *smiles*, *laughs*, *chuckles*, etc.
+    t = re.sub(
+        r"\*(?:smiles|smiling|laughs|laughing|chuckles|chuckling|giggles|giggling|sighs|pauses|winks|softly|whispers|whispering)\*",
+        "",
+        t,
+        flags=re.IGNORECASE,
+    )
     # Remove markdown bold/italic (**text**, *text*, __text__, _text_)
     t = re.sub(r"\*\*([^*]+)\*\*", r"\1", t)
     t = re.sub(r"\*([^*]+)\*", r"\1", t)
@@ -69,8 +78,22 @@ def clean_tts_text(text: str) -> str:
     t = re.sub(r"_([^_]+)_", r"\1", t)
     # Remove blockquotes and list bullets at line starts
     t = re.sub(r"^[\s>*+-]+\s*", "", t, flags=re.MULTILINE)
+    # Remove parenthetical stage directions like (smiling), (laughs), (in English)
+    t = re.sub(
+        r"\((?:smiling|laughing|chuckles|giggles|softly|whispering|pauses|in English|in Hindi|in Marathi)\)",
+        "",
+        t,
+        flags=re.IGNORECASE,
+    )
+    # Remove trailing English translation inside parens when main text is Devanagari
+    if re.search(r"[\u0900-\u097F]", t):
+        t = re.sub(r"\([A-Za-z\s,!?.-]+\)", "", t)
+        # Normalize single-letter 'म' typo from LLM at line/sentence start
+        t = re.sub(r"(^|[.!?।]\s*)म\s+", r"\1मी ", t)
     # Remove emojis (surrogates and broad Unicode symbol blocks)
     t = re.sub(r"[\U00010000-\U0010ffff]", "", t)
+    # Replace repeated dots/ellipsis with single comma pause for natural cadence
+    t = re.sub(r"\.{2,}", ", ", t)
     # Normalize whitespaces
     t = re.sub(r"\s+", " ", t).strip()
     return t
@@ -483,9 +506,9 @@ class EdgeTTSSpeaker(TTSProvider):
     VOICE_MAP = {
         "hi": "hi-IN-SwaraNeural",
         "mr": "mr-IN-AarohiNeural",
-        "en": "en-IN-NeerjaExpressiveNeural",
+        "en": "en-US-AvaMultilingualNeural",
+        "en-us": "en-US-AvaMultilingualNeural",
         "en-in": "en-IN-NeerjaExpressiveNeural",
-        "en-us": "en-US-JennyNeural",
         "pa": "pa-IN-OjasNeural",
         "bn": "bn-IN-TanishaaNeural",
         "gu": "gu-IN-DhwaniNeural",
@@ -516,14 +539,25 @@ class EdgeTTSSpeaker(TTSProvider):
         import edge_tts
         import soundfile as sf
 
-        if voice and (voice in self.VOICE_MAP.values() or "Neural" in voice):
+        lang_base = language.strip().lower().split("-")[0].split("_")[0]
+
+        # Strict language matching: ensure Indic text is never spoken by an English voice
+        if lang_base == "mr":
+            target_voice = voice if (voice and voice.startswith("mr-")) else self.VOICE_MAP.get("mr", "mr-IN-AarohiNeural")
+        elif lang_base == "hi":
+            target_voice = voice if (voice and voice.startswith("hi-")) else self.VOICE_MAP.get("hi", "hi-IN-SwaraNeural")
+        elif voice and (voice in self.VOICE_MAP.values() or "Neural" in voice):
             target_voice = voice
         else:
-            default_voice = self.VOICE_MAP.get("hi" if language == "hi" else "en", "en-IN-NeerjaExpressiveNeural")
-            target_voice = self.VOICE_MAP.get(language.lower()) or default_voice
+            target_voice = self.VOICE_MAP.get(lang_base, "en-US-AvaMultilingualNeural")
 
         async def _run_edge() -> bytes:
-            communicate = edge_tts.Communicate(clean_text, target_voice)
+            communicate = edge_tts.Communicate(
+                clean_text,
+                target_voice,
+                rate="+0%",
+                pitch="+0Hz",
+            )
             mp3_bytes = b""
             async for chunk in communicate.stream():
                 if chunk.get("type") == "audio":
@@ -870,11 +904,7 @@ class NyxTTSSpeaker(TTSProvider):
         """Select the appropriate TTS provider for the given language and voice."""
         lang_base = language.strip().lower().split("-")[0].split("_")[0]
 
-        # 1. Explicit Kokoro voice requested (af_heart, af_bella, etc.)
-        if voice and voice.startswith(("af_", "bf_", "am_", "bm_")):
-            return self._kokoro
-
-        # 2. Mithi Indian neural female speaker when explicitly enabled
+        # 1. Mithi Indian neural female speaker when explicitly enabled
         if getattr(self, "_use_mithi", False) and getattr(self, "_mithi", None) is not None:
             if voice and hasattr(self._mithi, "ALL_VOICES") and voice in self._mithi.ALL_VOICES:
                 return self._mithi
@@ -883,14 +913,21 @@ class NyxTTSSpeaker(TTSProvider):
             if lang_base == "en" and getattr(self, "_prefer_mithi_for_english", False):
                 return self._mithi
 
-        # 3. High-fidelity Neural Edge-TTS (Swara, Aarohi, Neerja) for Indian languages or Neural voice
-        if getattr(self, "_use_edge", False) and getattr(self, "_edge_tts", None) is not None:
-            if lang_base in _PYTTSX3_LANGUAGES or (voice and "Neural" in voice) or lang_base == "en-in":
+        # 2. Indian languages MUST NEVER route to Kokoro (Kokoro has no Indic phonemes).
+        # Always route Indian languages to Edge Neural (Swara for Hindi, Aarohi for Marathi).
+        if lang_base in ("hi", "mr", "pa", "bn", "gu", "ta", "te", "kn", "ml", "or"):
+            if getattr(self, "_use_edge", True) and getattr(self, "_edge_tts", None) is not None:
                 return self._edge_tts
-
-        # 4. Offline Indic fallback (pyttsx3 / eSpeak-NG)
-        if lang_base in _PYTTSX3_LANGUAGES:
             return self._pyttsx3
+
+        # 3. Explicit Kokoro voice requested (af_heart, af_bella, etc.) for English
+        if voice and voice.startswith(("af_", "bf_", "am_", "bm_")):
+            return self._kokoro
+
+        # 4. High-fidelity Neural Edge-TTS (Ava, Neerja, Jenny) for English
+        if getattr(self, "_use_edge", False) and getattr(self, "_edge_tts", None) is not None:
+            if (voice and "Neural" in voice) or lang_base == "en-in":
+                return self._edge_tts
 
         # 5. Kokoro CPU ONNX for English or general fallback
         return self._kokoro

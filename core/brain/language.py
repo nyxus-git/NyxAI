@@ -139,3 +139,26 @@ def is_devanagari(text: str) -> bool:
     """
     lang = detect_response_language(text)
     return lang in ("hi", "mr")
+
+
+def normalize_response_text(content: str, language: str | None = None) -> str:
+    """
+    Clean and normalize minor LLM generation artifacts for spoken Indic and English text:
+    - Normalizes isolated single-letter 'म ' typo at sentence boundaries to 'मैं ' (Hindi) or 'मी ' (Marathi).
+    - Corrects corrupted feminine endings in Marathi (e.g. 'शकती' -> 'शकते').
+    - Cleans duplicate whitespace while preserving punctuation.
+    """
+    if not content:
+        return ""
+    import re
+    lang = language or detect_response_language(content)
+    text = content
+
+    if lang == "hi":
+        text = re.sub(r"(^|[.!?।]\s*)म\s+", r"\1मैं ", text)
+    elif lang == "mr":
+        text = re.sub(r"(^|[.!?।]\s*)म\s+", r"\1मी ", text)
+        text = re.sub(r"शकती(?=\s|[.!?।]|$)", "शकते", text)
+        text = re.sub(r"मदद(?=\s|[.!?।]|$)", "मदत", text)
+
+    return text.strip()
