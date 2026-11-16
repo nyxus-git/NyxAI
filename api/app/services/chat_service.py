@@ -159,6 +159,17 @@ class ChatService:
         base_prompt = get_system_prompt(compact=voice_mode)
         if voice_mode:
             base_prompt += "\nReply concisely in 1-2 short natural spoken sentences unless asked for detail."
+
+        # Explicit language constraint based on input detection to prevent cross-language hallucination
+        from core.brain.language import detect_response_language
+        input_lang = detect_response_language(query)
+        if input_lang == "en":
+            base_prompt += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in English. You MUST formulate your entire response in English only. Never reply in Hindi or Marathi."
+        elif input_lang == "hi":
+            base_prompt += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Hindi (हिंदी). You MUST formulate your response in pure spoken Hindi using feminine verbs (स्त्रीलिंग). Never use Marathi words."
+        elif input_lang == "mr":
+            base_prompt += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Marathi (मराठी). You MUST formulate your entire response in pure spoken Marathi using feminine verbs (स्त्रीलिंगी). Never use Hindi words like 'हूँ', 'आप', 'नमस्ते', 'मदद'."
+
         memory_context = await self._memory.build_system_prompt_context(query=query)
 
         if memory_context:

@@ -96,23 +96,27 @@ class Settings(BaseSettings):
 
     # TTS (Text-to-Speech)
     tts_engine: str = Field(
-        default="mithi",
-        description="TTS engine: 'mithi' (authentic Indian female voices), 'kokoro' (English), or 'pyttsx3' (fallback).",
+        default="edge_tts",
+        description="TTS engine: 'edge_tts' (high-fidelity neural female voices), 'kokoro' (English), 'mithi', or 'pyttsx3' (fallback).",
     )
     tts_voice: str = Field(
-        default="charvi",
-        description="TTS voice name: for Mithi ('charvi', 'ahana', 'vaidehi', 'malini', 'jahnavi') or Kokoro ('af_heart').",
+        default="en-IN-NeerjaExpressiveNeural",
+        description="TTS voice name: for Edge ('en-IN-NeerjaExpressiveNeural', 'hi-IN-SwaraNeural', 'mr-IN-AarohiNeural') or Kokoro ('af_heart').",
     )
     tts_speed: float = Field(
         default=1.0,
         description="TTS speech speed multiplier. 1.0 = normal, 1.2 = slightly faster.",
     )
-    tts_use_mithi: bool = Field(
+    tts_use_edge_neural: bool = Field(
         default=True,
-        description="Whether to use Mithi for natural Indian female voices.",
+        description="Whether to use Microsoft Edge Neural voices (Swara, Aarohi, Neerja) for high-accuracy speech.",
+    )
+    tts_use_mithi: bool = Field(
+        default=False,
+        description="Whether to use Mithi for local Indian female voices (requires >1GB free VRAM).",
     )
     tts_prefer_mithi_for_english: bool = Field(
-        default=True,
+        default=False,
         description="Whether to use Mithi's Indian female voice for English as well as Hindi/Marathi.",
     )
 

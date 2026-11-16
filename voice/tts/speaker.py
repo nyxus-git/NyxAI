@@ -477,13 +477,15 @@ class EdgeTTSSpeaker(TTSProvider):
     """
     High-fidelity Neural Female TTS provider using Edge-TTS.
     Provides human-like, warm female voices for Hindi, Marathi, and English.
+    Requires zero GPU VRAM, preventing contention with LLMs and Whisper.
     """
 
     VOICE_MAP = {
         "hi": "hi-IN-SwaraNeural",
         "mr": "mr-IN-AarohiNeural",
-        "en-in": "en-IN-NeerjaExpressiveNeural",
         "en": "en-IN-NeerjaExpressiveNeural",
+        "en-in": "en-IN-NeerjaExpressiveNeural",
+        "en-us": "en-US-JennyNeural",
         "pa": "pa-IN-OjasNeural",
         "bn": "bn-IN-TanishaaNeural",
         "gu": "gu-IN-DhwaniNeural",
@@ -493,8 +495,15 @@ class EdgeTTSSpeaker(TTSProvider):
         "ml": "ml-IN-SobhanaNeural",
     }
 
-    def __init__(self, fallback: TTSProvider | None = None) -> None:
-        self._fallback = fallback
+    def __init__(
+        self,
+        fallback_en: TTSProvider | None = None,
+        fallback_indic: TTSProvider | None = None,
+        fallback: TTSProvider | None = None,
+    ) -> None:
+        self._fallback_en = fallback_en or fallback
+        self._fallback_indic = fallback_indic or fallback or fallback_en
+        self._fallback = fallback or fallback_en
 
     def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
         clean_text = clean_tts_text(text)
@@ -510,7 +519,7 @@ class EdgeTTSSpeaker(TTSProvider):
         if voice and (voice in self.VOICE_MAP.values() or "Neural" in voice):
             target_voice = voice
         else:
-            default_voice = self.VOICE_MAP.get("hi" if language == "hi" else "en", "hi-IN-SwaraNeural")
+            default_voice = self.VOICE_MAP.get("hi" if language == "hi" else "en", "en-IN-NeerjaExpressiveNeural")
             target_voice = self.VOICE_MAP.get(language.lower()) or default_voice
 
         async def _run_edge() -> bytes:
@@ -539,6 +548,11 @@ class EdgeTTSSpeaker(TTSProvider):
                 return asyncio.run(_run_edge())
         except Exception as e:
             logger.warning("edge_tts_failed_fallback", error=str(e), language=language)
+            lang_base = language.strip().lower().split("-")[0].split("_")[0]
+            if lang_base == "en" and self._fallback_en:
+                return self._fallback_en.synthesize(text, language=language, voice=voice)
+            if self._fallback_indic:
+                return self._fallback_indic.synthesize(text, language=language, voice=voice)
             if self._fallback:
                 return self._fallback.synthesize(text, language=language, voice=voice)
             return b""
@@ -547,8 +561,14 @@ class EdgeTTSSpeaker(TTSProvider):
         wav = self.synthesize(text, language=language)
         if wav:
             play_wav_bytes(wav)
-        elif self._fallback:
-            self._fallback.speak(text, language=language)
+        else:
+            lang_base = language.strip().lower().split("-")[0].split("_")[0]
+            if lang_base == "en" and self._fallback_en:
+                self._fallback_en.speak(text, language=language)
+            elif self._fallback_indic:
+                self._fallback_indic.speak(text, language=language)
+            elif self._fallback:
+                self._fallback.speak(text, language=language)
 
     def get_engine_name(self) -> str:
         return "edge-tts/neural-female"
@@ -820,14 +840,14 @@ class NyxTTSSpeaker(TTSProvider):
         kokoro_voice: str = "af_heart",
         tts_speed: float = 1.0,
         use_edge_neural: bool = True,
-        use_mithi: bool = True,
+        use_mithi: bool = False,
         mithi_voice: str = "charvi",
         prefer_mithi_for_english: bool = False,
     ) -> None:
         self._kokoro = KokoroSpeaker(voice=kokoro_voice, speed=tts_speed)
         self._pyttsx3 = Pyttsx3Speaker()
         self._use_edge = use_edge_neural
-        self._edge_tts = EdgeTTSSpeaker(fallback=self._pyttsx3)
+        self._edge_tts = EdgeTTSSpeaker(fallback_en=self._kokoro, fallback_indic=self._pyttsx3)
         self._use_mithi = use_mithi
         self._mithi_voice = mithi_voice
         self._prefer_mithi_for_english = prefer_mithi_for_english
@@ -846,26 +866,33 @@ class NyxTTSSpeaker(TTSProvider):
             prefer_mithi_for_english=prefer_mithi_for_english,
         )
 
-    def _get_provider(self, language: str) -> TTSProvider:
-        """Select the appropriate TTS provider for the given language."""
+    def _get_provider(self, language: str, voice: str | None = None) -> TTSProvider:
+        """Select the appropriate TTS provider for the given language and voice."""
         lang_base = language.strip().lower().split("-")[0].split("_")[0]
 
-        # 1. Primary: Mithi Indian neural female speaker
+        # 1. Explicit Kokoro voice requested (af_heart, af_bella, etc.)
+        if voice and voice.startswith(("af_", "bf_", "am_", "bm_")):
+            return self._kokoro
+
+        # 2. Mithi Indian neural female speaker when explicitly enabled
         if getattr(self, "_use_mithi", False) and getattr(self, "_mithi", None) is not None:
-            if lang_base in _PYTTSX3_LANGUAGES or lang_base in _MITHI_LANGUAGES:
+            if voice and hasattr(self._mithi, "ALL_VOICES") and voice in self._mithi.ALL_VOICES:
+                return self._mithi
+            if lang_base in _MITHI_LANGUAGES or lang_base in _PYTTSX3_LANGUAGES:
                 return self._mithi
             if lang_base == "en" and getattr(self, "_prefer_mithi_for_english", False):
                 return self._mithi
 
-        # 2. Secondary fallback: Edge TTS neural female voice
-        if getattr(self, "_use_edge", False) and lang_base in _PYTTSX3_LANGUAGES:
-            return self._edge_tts
+        # 3. High-fidelity Neural Edge-TTS (Swara, Aarohi, Neerja) for Indian languages or Neural voice
+        if getattr(self, "_use_edge", False) and getattr(self, "_edge_tts", None) is not None:
+            if lang_base in _PYTTSX3_LANGUAGES or (voice and "Neural" in voice) or lang_base == "en-in":
+                return self._edge_tts
 
-        # 3. pyttsx3 fallback
+        # 4. Offline Indic fallback (pyttsx3 / eSpeak-NG)
         if lang_base in _PYTTSX3_LANGUAGES:
             return self._pyttsx3
 
-        # 4. Kokoro for English or general fallback
+        # 5. Kokoro CPU ONNX for English or general fallback
         return self._kokoro
 
     def synthesize(self, text: str, language: str = "en", voice: str | None = None) -> bytes:
@@ -875,12 +902,12 @@ class NyxTTSSpeaker(TTSProvider):
         Args:
             text: Text to synthesize.
             language: Language code from Whisper detection ('en', 'hi', 'mr', etc.).
-            voice: Optional voice ID override (used for Kokoro/Mithi).
+            voice: Optional voice ID override (used for Kokoro/Mithi/Edge).
 
         Returns:
             WAV audio bytes.
         """
-        provider = self._get_provider(language)
+        provider = self._get_provider(language, voice=voice)
         logger.debug(
             "nyx_tts_routing",
             language=language,

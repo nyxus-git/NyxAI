@@ -28,19 +28,18 @@ AVATAR_ASSETS_DIR = PROJECT_ROOT / "avatar" / "assets"
 AVATAR_CONFIG_PATH = AVATAR_ASSETS_DIR / "avatar_config.json"
 
 AVAILABLE_FEMALE_VOICES: list[dict[str, str]] = [
-    {"id": "charvi", "label": "Charvi (Warm Indian Female - Default)"},
-    {"id": "ahana", "label": "Ahana (Expressive Indian Female)"},
-    {"id": "vaidehi", "label": "Vaidehi (Soft Clear Indian Female)"},
-    {"id": "malini", "label": "Malini (Articulate Indian Female)"},
-    {"id": "jahnavi", "label": "Jahnavi (Bright Indian Female)"},
-    {"id": "af_heart", "label": "Heart (Warm, Natural US)"},
-    {"id": "af_bella", "label": "Bella (Expressive US)"},
-    {"id": "af_nova", "label": "Nova (Clear, Bright US)"},
-    {"id": "af_nicole", "label": "Nicole (Soft, Calm US)"},
-    {"id": "af_sarah", "label": "Sarah (Friendly US)"},
-    {"id": "af_sky", "label": "Sky (Youthful US)"},
-    {"id": "bf_emma", "label": "Emma (British Warm)"},
-    {"id": "bf_isabella", "label": "Isabella (British Refined)"},
+    {"id": "en-IN-NeerjaExpressiveNeural", "label": "Neerja (Expressive Indian English - Neural)"},
+    {"id": "hi-IN-SwaraNeural", "label": "Swara (Natural Hindi - Neural)"},
+    {"id": "mr-IN-AarohiNeural", "label": "Aarohi (Natural Marathi - Neural)"},
+    {"id": "en-US-JennyNeural", "label": "Jenny (Warm US English - Neural)"},
+    {"id": "af_heart", "label": "Heart (Warm Natural US - Kokoro CPU)"},
+    {"id": "charvi", "label": "Charvi (Local Indian Female - Mithi)"},
+    {"id": "ahana", "label": "Ahana (Expressive Indian Female - Mithi)"},
+    {"id": "vaidehi", "label": "Vaidehi (Soft Indian Female - Mithi)"},
+    {"id": "malini", "label": "Malini (Articulate Indian Female - Mithi)"},
+    {"id": "jahnavi", "label": "Jahnavi (Bright Indian Female - Mithi)"},
+    {"id": "af_nova", "label": "Nova (Clear Bright US - Kokoro)"},
+    {"id": "bf_emma", "label": "Emma (British Female - Kokoro)"},
 ]
 
 

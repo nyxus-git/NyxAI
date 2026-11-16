@@ -94,6 +94,7 @@ export function useAudioLipSync(muted: boolean): LipSyncLiveState {
       }
 
       const sessionId = playbackSessionRef.current;
+      isPlayingRef.current = true;
 
       try {
         const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;

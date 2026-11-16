@@ -261,7 +261,7 @@ async def run_ptt() -> None:
                 # Speak response with authentic Indian female voice matching reply language
                 from core.brain.language import detect_response_language
                 spoken_lang = detect_response_language(reply)
-                speaker = NyxTTSSpeaker(prefer_mithi_for_english=True)
+                speaker = NyxTTSSpeaker(prefer_mithi_for_english=False, use_edge_neural=True)
                 speaker.speak(reply, language=spoken_lang)
 
     except Exception as e:
@@ -329,7 +329,7 @@ async def run_hands_free_listener_task(
     from voice.stt.transcriber import WhisperTranscriber
 
     listener = HandsFreeVoiceListener(wake_words=["hey_jarvis", "hey_nyx"], sample_rate=16000)
-    speaker = NyxTTSSpeaker(prefer_mithi_for_english=True)
+    speaker = NyxTTSSpeaker(prefer_mithi_for_english=False, use_edge_neural=True)
     transcriber = WhisperTranscriber(model="small")
     loop = asyncio.get_running_loop()
 
