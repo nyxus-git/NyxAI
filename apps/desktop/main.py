@@ -40,8 +40,8 @@ from core.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
-BACKEND_URL = os.getenv("NYXAI_BACKEND_URL", "http://127.0.0.1:8000")
-UI_URL = os.getenv("NYXAI_UI_URL", "http://127.0.0.1:5173")
+BACKEND_URL = os.getenv("NYXAI_BACKEND_URL", "http://127.0.0.1:19420")
+UI_URL = os.getenv("NYXAI_UI_URL", "http://127.0.0.1:19421")
 SOCKET_PATH = Path(os.getenv("NYXAI_SOCKET_PATH", "/tmp/nyxai-desktop.sock"))
 
 
@@ -82,7 +82,7 @@ def find_hyprland_window() -> dict[str, Any] | None:
             title = client.get("title", "").lower()
             initial_title = client.get("initialTitle", "").lower()
             cls = client.get("class", "").lower()
-            if "nyxai" in title or "nyxai" in initial_title or "nyxai" in cls or "5173" in title:
+            if "nyxai" in title or "nyxai" in initial_title or "nyxai" in cls or "19421" in title or "5173" in title:
                 return client
     except Exception as e:
         logger.warning("hyprctl_client_search_failed", error=str(e))

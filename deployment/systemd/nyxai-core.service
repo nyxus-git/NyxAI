@@ -8,7 +8,7 @@ Wants=network.target
 Type=simple
 WorkingDirectory=%h/Projects/NyxAI
 EnvironmentFile=-%h/Projects/NyxAI/.env
-ExecStart=%h/Projects/NyxAI/.venv/bin/uvicorn api.app.main:app --host 127.0.0.1 --port 8000
+ExecStart=%h/Projects/NyxAI/.venv/bin/uvicorn api.app.main:app --host 127.0.0.1 --port 19420
 Restart=on-failure
 RestartSec=5s
 Environment=PYTHONUNBUFFERED=1

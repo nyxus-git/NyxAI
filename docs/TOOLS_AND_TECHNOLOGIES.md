@@ -95,7 +95,7 @@ NyxAI is designed from first principles around three non-negotiable architectura
   - Serves REST endpoints (`/chat`, `/health`, `/memory`, `/avatar`) and WebSocket channels (`/voice/ws`) from a single unified application.
   - Automatically validates incoming JSON payloads and outputs clear 422 validation errors if fields are missing or malformed.
   - Generates live API documentation allowing developers to inspect and test agent capabilities via their browser.
-  - Uvicorn delivers ASGI asynchronous performance with minimal memory overhead, hosting the service reliably at `127.0.0.1:8000`.
+  - Uvicorn delivers ASGI asynchronous performance with minimal memory overhead, hosting the service reliably at `127.0.0.1:19420`.
 
 ### Pydantic v2 & Pydantic-Settings
 - **Why We Use It**: Pydantic v2 was rewritten in Rust (`pydantic-core`), making data validation and JSON serialization 5x to 50x faster than v1. `pydantic-settings` provides a disciplined way to manage application configuration.

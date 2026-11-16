@@ -40,7 +40,7 @@ install:
 
 # ─── Start development server ──────────────────────────────────────────────────
 dev:
-	.venv/bin/python -m uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
+	.venv/bin/python -m uvicorn api.app.main:app --reload --host 127.0.0.1 --port 19420
 
 # ─── Launch Dedicated Desktop App ──────────────────────────────────────────────
 app:

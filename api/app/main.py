@@ -8,7 +8,7 @@ handles startup (init DB, LLM, agent, voice, memory) and shutdown
 (graceful HTTP client close). All shared state lives on `app.state`.
 
 Run with:
-    uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000
+    uvicorn api.app.main:app --reload --host 127.0.0.1 --port 19420
     make dev
 """
 

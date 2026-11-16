@@ -6,7 +6,7 @@ This document describes the REST, WebSocket, and Desktop IPC interfaces exposed 
 
 ## 1. REST Endpoints
 
-Base URL: `http://127.0.0.1:8000`
+Base URL: `http://127.0.0.1:19420`
 
 ### 1.1 Health Check
 ```http

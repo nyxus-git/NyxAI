@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # Server
     host: str = Field(default="127.0.0.1", description="API server bind host")
-    port: int = Field(default=8000, description="API server bind port")
+    port: int = Field(default=19420, description="API server bind port")
 
     # Ollama / LLM
     ollama_base_url: str = Field(

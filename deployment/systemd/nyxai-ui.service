@@ -7,7 +7,7 @@ Wants=nyxai-core.service
 [Service]
 Type=simple
 WorkingDirectory=%h/Projects/NyxAI/apps/companion
-ExecStart=/usr/bin/npm run preview -- --host 127.0.0.1 --port 5173
+ExecStart=/usr/bin/npm run preview -- --host 127.0.0.1 --port 19421
 Restart=on-failure
 RestartSec=5s
 Environment=NODE_ENV=production

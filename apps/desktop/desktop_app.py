@@ -51,7 +51,7 @@ from PyQt6.QtWidgets import (
 )
 
 BACKEND_HOST = os.getenv("NYXAI_HOST", "127.0.0.1")
-BACKEND_PORT = int(os.getenv("NYXAI_PORT", "8000"))
+BACKEND_PORT = int(os.getenv("NYXAI_PORT", "19420"))
 APP_URL = os.getenv("NYXAI_APP_URL", f"http://{BACKEND_HOST}:{BACKEND_PORT}")
 SINGLE_INSTANCE_KEY = "nyxai-desktop-app-instance"
 SOCKET_PATH = Path(tempfile.gettempdir()) / SINGLE_INSTANCE_KEY
@@ -354,7 +354,7 @@ class NyxDesktopWindow(QMainWindow):
           <div style="width:44px;height:44px;border-radius:50%;border:3px solid #00f2fe;
                       border-top-color:transparent;animation:spin 0.9s linear infinite;"></div>
           <div style="font-size:16px;font-weight:600;">Starting NyxAI Companion...</div>
-          <div style="font-size:12px;color:#94a3b8;">Waiting for local AI backend on port 8000</div>
+          <div style="font-size:12px;color:#94a3b8;">Waiting for local AI backend on port 19420</div>
           <style>@keyframes spin{to{transform:rotate(360deg);}}</style>
         </body>
         </html>

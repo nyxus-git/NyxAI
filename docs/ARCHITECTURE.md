@@ -17,11 +17,11 @@ NyxAI operates as a modular, decoupled set of services running under the user's 
        │                      │
        ▼                      ▼
   Companion UI           Push-To-Talk
-(React/Vite :5173)    (apps/desktop/main.py)
+(React/Vite :19421)   (apps/desktop/main.py)
        │                      │
        ▼ WebSocket            ▼ HTTP / WebSocket
  ┌────────────────────────────────────────────────────────┐
- │            NyxAI Core Backend (FastAPI :8000)          │
+ │            NyxAI Core Backend (FastAPI :19420)        │
  │                                                        │
  │   Routers: /health, /chat, /memory, /voice             │
  │                                                        │
@@ -68,7 +68,7 @@ systemd starts `nyxai-core.service`
        ▼
 systemd starts `nyxai-ui.service`
        │
-       └──> Companion UI built preview serves at http://127.0.0.1:5173
+       └──> Companion UI built preview serves at http://127.0.0.1:19421
        │
        ▼
 Hyprland Desktop Environment

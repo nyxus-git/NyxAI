@@ -69,7 +69,7 @@ Inside the app's top bar, you can switch between the stylized companion, upload 
 
 ### Run in Development Mode
 
-Start both the backend API (`http://127.0.0.1:8000`) and Companion Web UI (`http://127.0.0.1:5173`) together:
+Start both the backend API (`http://127.0.0.1:19420`) and Companion Web UI (`http://127.0.0.1:19421`) together:
 
 ```bash
 ./scripts/run.sh dev
@@ -78,7 +78,7 @@ Start both the backend API (`http://127.0.0.1:8000`) and Companion Web UI (`http
 Or run them separately:
 
 ```bash
-make dev   # FastAPI backend (API docs at http://127.0.0.1:8000/docs)
+make dev   # FastAPI backend (API docs at http://127.0.0.1:19420/docs)
 make ui    # Companion Web UI dev server
 ```
 
@@ -116,13 +116,13 @@ Optional CLI flags (for CPU-only systems, custom Whisper size, or disabling TTS)
 Check server health:
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:19420/health
 ```
 
 Send a chat message:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/chat \
+curl -X POST http://127.0.0.1:19420/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello NyxAI!"}'
 ```
@@ -157,7 +157,7 @@ Key settings in `.env`:
 
 ```env
 HOST=127.0.0.1
-PORT=8000
+PORT=19420
 
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:3b

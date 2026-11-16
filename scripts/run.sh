@@ -71,11 +71,11 @@ case "$cmd" in
         echo "Starting NyxAI in foreground development mode..."
         trap 'echo "Stopping dev servers..."; kill $(jobs -p) 2>/dev/null || true' EXIT INT TERM
 
-        "$ROOT_DIR/.venv/bin/python" -m uvicorn api.app.main:app --reload --host 127.0.0.1 --port 8000 &
+        "$ROOT_DIR/.venv/bin/python" -m uvicorn api.app.main:app --reload --host 127.0.0.1 --port 19420 &
 
-        echo "Waiting for core backend on http://127.0.0.1:8000..."
+        echo "Waiting for core backend on http://127.0.0.1:19420..."
         for _ in {1..30}; do
-            if curl -s http://127.0.0.1:8000/health >/dev/null 2>&1; then
+            if curl -s http://127.0.0.1:19420/health >/dev/null 2>&1; then
                 echo "Backend is ready!"
                 break
             fi

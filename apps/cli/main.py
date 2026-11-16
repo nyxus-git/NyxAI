@@ -38,7 +38,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-BACKEND_URL = os.getenv("NYXAI_BACKEND_URL", "http://127.0.0.1:8000")
+BACKEND_URL = os.getenv("NYXAI_BACKEND_URL", "http://127.0.0.1:19420")
 SOCKET_PATH = Path(os.getenv("NYXAI_SOCKET_PATH", "/tmp/nyxai-desktop.sock"))
 
 # Terminal ANSI colors

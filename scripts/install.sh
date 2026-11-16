@@ -142,7 +142,7 @@ if [ ! -f "$ROOT_DIR/.env" ]; then
         cat > "$ROOT_DIR/.env" <<EOF
 APP_NAME=NyxAI
 HOST=127.0.0.1
-PORT=8000
+PORT=19420
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=$MODEL_NAME
 TTS_ENGINE=kokoro
