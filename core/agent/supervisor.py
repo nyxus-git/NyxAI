@@ -97,13 +97,13 @@ class NyxSupervisor:
                 iterations=1,
             )
 
-        # 2. Fast-path for direct YouTube playback requests
-        if ("play " in clean_msg and "youtube" in clean_msg) or clean_msg.startswith("play video") or clean_msg.startswith("play song"):
+        # 2. Fast-path for direct YouTube playback requests ONLY when explicitly requested
+        if "youtube" in clean_msg and ("play " in clean_msg or "open " in clean_msg or "search " in clean_msg):
             query = re_extract_query(message)
             logger.info("supervisor_routing_to_media_agent", query=query)
             res = await self.media_agent.execute("play_youtube", {"query": query})
             return AgentResponse(
-                content=res.display_text or f"Playing {query} on YouTube.",
+                content=res.display_text or f"Opening {query} on YouTube.",
                 model=self._llm.get_model_name(),
                 tool_used="play_youtube",
                 tool_result=res.data,

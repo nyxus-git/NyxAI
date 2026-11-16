@@ -26,14 +26,14 @@ logger = get_logger(__name__)
 PLAY_YOUTUBE_DEF = ToolDefinition(
     name="play_youtube",
     description=(
-        "Search and open a YouTube video or music in the user's web browser. "
-        "Use this when the user asks to play a song, video, lo-fi stream, or tutorial on YouTube. "
-        "Examples: 'play lo-fi beats on YouTube', 'open Bohemian Rhapsody on YouTube'."
+        "Search and open a YouTube video or song in the user's web browser. "
+        "CRITICAL: ONLY use this tool when the user EXPLICITLY asks for 'YouTube' in their message. "
+        "Never call this tool for generic conversation or without the user explicitly requesting YouTube."
     ),
     parameters={
         "query": ToolParameter(
             type="string",
-            description="The search query for the video/song (e.g. 'lofi hip hop', 'queen bohemian rhapsody').",
+            description="The exact search query for the YouTube video/song requested by the user.",
             required=True,
         ),
     },

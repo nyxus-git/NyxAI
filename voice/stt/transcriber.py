@@ -129,7 +129,7 @@ class STTProvider(ABC):
 # Whisper Implementation
 
 
-DEFAULT_INDIC_PROMPT = "नमस्ते, नमस्कार, Hello! कैसे हो आप? काय चाललंय? Hi Nyx."
+DEFAULT_INDIC_PROMPT = "Hello! Hi Nyx. How can I help you today? नमस्ते, नमस्कार, कैसे हो आप? काय चाललंय?"
 
 
 class WhisperTranscriber(STTProvider):
@@ -390,9 +390,21 @@ class WhisperTranscriber(STTProvider):
 
         full_text = " ".join(full_text_parts).strip()
 
+        # Sanitize language detection using the transcribed text content
+        final_language = info.language
+        if full_text:
+            from core.brain.language import detect_response_language
+            script_lang = detect_response_language(full_text)
+            # If text is Latin script English, ensure language is 'en' even if Whisper guessed 'mr' or 'hi'
+            if script_lang == "en" and final_language in ("mr", "hi"):
+                final_language = "en"
+            elif script_lang in ("hi", "mr"):
+                final_language = script_lang
+
         logger.info(
             "whisper_transcription_complete",
-            language=info.language,
+            language=final_language,
+            raw_whisper_lang=info.language,
             language_probability=round(info.language_probability, 3),
             text_preview=full_text[:60],
             duration_s=round(duration, 2),
@@ -401,7 +413,7 @@ class WhisperTranscriber(STTProvider):
 
         return TranscriptionResult(
             text=full_text,
-            language=info.language,
+            language=final_language,
             language_probability=info.language_probability,
             segments=segments,
             duration_seconds=duration,

@@ -213,22 +213,18 @@ export const MultiAgentHUD: React.FC<MultiAgentHUDProps> = ({ onSendMessage }) =
             type="button"
             className="hud-action-card"
             disabled={actionInProgress !== null}
-            onClick={() =>
-              handleAction('play_youtube', 'Play Lo-Fi Music', {
-                query: 'lofi hip hop radio beats to relax study to',
-              })
-            }
+            onClick={() => handleAction('control_media', 'Toggle Media Playback', { action: 'play-pause' })}
           >
             <div className="hud-action-icon">
-              {actionInProgress === 'play_youtube' ? (
+              {actionInProgress === 'control_media' ? (
                 <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
               ) : (
-                <Play className="w-4 h-4 text-violet-400" />
+                <Volume2 className="w-4 h-4 text-violet-400" />
               )}
             </div>
             <div className="hud-action-content">
-              <span className="hud-action-name">Play Lo-Fi Beats</span>
-              <span className="hud-action-desc">YouTube stream in background</span>
+              <span className="hud-action-name">Media Play/Pause</span>
+              <span className="hud-action-desc">Toggle Linux audio / MPRIS</span>
             </div>
           </button>
 

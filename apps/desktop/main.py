@@ -258,9 +258,11 @@ async def run_ptt() -> None:
                 reply = chat_data.get("response") or chat_data.get("reply", "")
                 print(f"\nNyxAI: {reply}\n")
 
-                # Speak response with authentic Indian female voice (Charvi/Mithi)
+                # Speak response with authentic Indian female voice matching reply language
+                from core.brain.language import detect_response_language
+                spoken_lang = detect_response_language(reply)
                 speaker = NyxTTSSpeaker(prefer_mithi_for_english=True)
-                speaker.speak(reply, language=result.language)
+                speaker.speak(reply, language=spoken_lang)
 
     except Exception as e:
         logger.error("ptt_execution_failed", error=str(e))
@@ -394,13 +396,17 @@ async def run_hands_free_listener_task(
             print(f"\n🤖 NyxAI: {reply}\n")
             print("🔊 Speaking response...")
 
+            # Detect actual reply language so TTS uses the matching voice engine
+            from core.brain.language import detect_response_language
+            spoken_lang = detect_response_language(reply)
+
             # Post Linux desktop notification
-            send_desktop_notification(f"NyxAI ({stt_result.language.upper()})", reply)
+            send_desktop_notification(f"NyxAI ({spoken_lang.upper()})", reply)
 
             # Speak response (barge-in enabled)
             await loop.run_in_executor(
                 None,
-                lambda: speaker.speak(reply, language=stt_result.language),
+                lambda: speaker.speak(reply, language=spoken_lang),
             )
 
             print("🎧 Ready! Listening for 'Hey Nyx' / 'Hey Jarvis'...\n")

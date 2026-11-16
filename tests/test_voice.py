@@ -386,4 +386,27 @@ class TestMithiSpeaker:
         provider_en = speaker._get_provider("en")
         assert isinstance(provider_en, MithiSpeaker)
 
+    def test_mithi_frontend_phonemizes_full_indic_sentence(self) -> None:
+        """Verify Mithi frontend does not truncate Hindi or Marathi to a single character."""
+        import importlib.util
+        from pathlib import Path
+        model_dir = Path(__file__).resolve().parent.parent / "models" / "tts" / "mithi-v2-flash"
+        run_py = model_dir / "run.py"
+        if not run_py.exists():
+            return
+
+        spec = importlib.util.spec_from_file_location("mithi_run_test", str(run_py))
+        if spec is None or spec.loader is None:
+            return
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        from mithi_tts import frontend as fe
+        _, ps_mr = fe.phonemes("हे आणि तुम्हाला काय मदत करू शकती?", "mr")
+        # Ensure we have full phonemes (>20 chars), not a truncated 2-character stub
+        assert len(ps_mr) >= 20
+
+        _, ps_hi = fe.phonemes("नमस्ते! आप कैसे हैं?", "hi")
+        assert len(ps_hi) >= 10
+
 

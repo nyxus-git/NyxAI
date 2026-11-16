@@ -34,14 +34,21 @@ _INDIC_RANGES: list[tuple[int, int, str]] = [
     (0x0980, 0x09FF, "bn"),  # Bengali
 ]
 
-# Marathi-specific vocabulary markers (common words unique to Marathi).
-# If Devanagari is detected AND any of these appear, we call it Marathi.
+# Marathi-exclusive vocabulary markers (common words unique to Marathi, NOT shared with Hindi).
 _MARATHI_MARKERS: frozenset[str] = frozenset([
-    "आहे", "आहेत", "नाही", "आपण", "तुम्ही", "करा", "सांगा", "मला",
-    "हे", "ते", "येथे", "तिथे", "होते", "होईल", "असेल", "म्हणजे",
-    "कसे", "काय", "केव्हा", "कोण", "कुठे", "जा", "या", "बघ",
-    "मी", "तू", "आम्ही", "ती", "तो", "करूया", "बघूया", "सांगतो",
-    "खूप", "खूपच", "छान", "बरं", "ठीक", "बघा", "द्या", "घ्या",
+    "आहे", "आहेत", "नाही", "नाहीत", "आपण", "तुम्ही", "सांगा", "मला", "तुला", "त्याला", "तिला",
+    "येथे", "तिथे", "होते", "होईल", "असेल", "म्हणजे", "कसे", "केव्हा", "कुठे", "कशी", "कसा",
+    "मी", "आम्ही", "करूया", "बघूया", "बघ", "बघा", "सांगतो", "सांगते", "खूप", "खूपच", "छान",
+    "बरं", "द्या", "घ्या", "नका", "चाललंय", "झाले", "झाला", "झाली", "करतो", "करते", "आहोत",
+    "करायचे", "केले", "केली", "शकता", "शकते"
+])
+
+# Hindi-exclusive vocabulary markers (common words unique to Hindi, NOT shared with Marathi).
+_HINDI_MARKERS: frozenset[str] = frozenset([
+    "है", "हैं", "हूँ", "था", "थी", "थे", "होगा", "होगी", "होंगे",
+    "रहा", "रही", "रहे", "क्या", "क्यों", "कहाँ", "कब", "कैसे", "कैसा", "कैसी",
+    "मेरा", "मेरी", "मेरे", "आपका", "आपकी", "आपके", "हमारा", "हमारी", "हमारे",
+    "नहीं", "बहुत", "अच्छा", "अच्छी", "नमस्ते", "बताओ", "करिए", "सकती", "सकता"
 ])
 
 
@@ -107,10 +114,13 @@ def detect_response_language(text: str) -> str:
     if dominant_ratio < 0.20:
         return "en"
 
-    # For Devanagari: distinguish Hindi vs Marathi using vocabulary markers
+    # For Devanagari: distinguish Hindi vs Marathi using relative marker frequency
     if dominant_lang == "hi":
-        words_in_text = set(text.split())
-        if words_in_text & _MARATHI_MARKERS:
+        import re
+        clean_words = set(re.findall(r"[\u0900-\u097F]+", text))
+        mar_score = len(clean_words & _MARATHI_MARKERS)
+        hin_score = len(clean_words & _HINDI_MARKERS)
+        if mar_score > hin_score:
             return "mr"
         return "hi"
 

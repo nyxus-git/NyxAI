@@ -145,7 +145,20 @@ class NyxAgent:
         system_content = get_system_prompt(compact=voice_mode) + AGENT_SYSTEM_PROMPT_SUFFIX
         if voice_mode:
             system_content += "\n\n## Voice Mode Speed Rule\nReply concisely in 1-2 short, natural spoken sentences unless detailed explanation is requested."
+
+        # Explicit language constraint based on input detection to prevent cross-language hallucination
+        from core.brain.language import detect_response_language
+        input_lang = detect_response_language(message)
+        if input_lang == "en":
+            system_content += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in English. You MUST formulate your entire response in English. Never reply in Hindi or Marathi."
+        elif input_lang == "hi":
+            system_content += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Hindi (हिंदी). You MUST formulate your response in pure spoken Hindi using feminine verbs (स्त्रीलिंग). Never use Marathi words."
+        elif input_lang == "mr":
+            system_content += "\n\n## STRICT LANGUAGE MANDATE\nThe user input is in Marathi (मराठी). You MUST formulate your response in pure spoken Marathi using feminine verbs (स्त्रीलिंग). Never use Hindi words."
         
+        # Media safeguard
+        system_content += "\n\n## Media & Browser Safeguard\nNEVER open YouTube, launch web browsers, or play songs unless the user explicitly requested it with words like 'YouTube' or 'play'."
+
         # Inject active plan if it exists
         if conversation_id:
             try:

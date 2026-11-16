@@ -137,12 +137,12 @@ async def execute_quick_action(request: Request, body: QuickActionRequest) -> Qu
     if action in ("activate_all_tasks", "activate_tasks", "jarvis_routine"):
         tool_name = "activate_all_tasks"
         tool_args = {}
-    elif action in ("play_youtube", "play_lofi", "music"):
+    elif action == "play_youtube":
         tool_name = "play_youtube"
-        tool_args = {"query": params.get("query", "lofi hip hop radio beats to relax/study to")}
-    elif action in ("control_media", "media_control"):
-        tool_name = "control_media"
-        tool_args = {"action": params.get("action", "play_pause")}
+        tool_args = {"query": params.get("query", "").strip()}
+    elif action in ("control_media", "media_control", "music", "play_music"):
+        tool_name = "control_music"
+        tool_args = {"action": params.get("action", "play-pause")}
     elif action in ("run_terminal", "terminal", "execute_terminal_command"):
         tool_name = "execute_terminal_command"
         tool_args = {"command": params.get("command", "git status")}
