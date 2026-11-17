@@ -49,10 +49,10 @@ export const CharacterModal: React.FC<CharacterModalProps> = ({
   const previewBoxRef = useRef<HTMLDivElement | null>(null);
 
   const voices = config.available_voices ?? [
+    { id: 'en-IN-NeerjaExpressiveNeural', label: 'Neerja (Natural Indian English - Neural Female)' },
+    { id: 'hi-IN-SwaraNeural', label: 'Swara (Natural Indian Hindi - Neural Female)' },
+    { id: 'mr-IN-AarohiNeural', label: 'Aarohi (Natural Indian Marathi - Neural Female)' },
     { id: 'en-US-AvaMultilingualNeural', label: 'Ava (Expressive & Natural - Copilot AI)' },
-    { id: 'en-IN-NeerjaExpressiveNeural', label: 'Neerja (Expressive Indian English - Neural)' },
-    { id: 'hi-IN-SwaraNeural', label: 'Swara (Natural Hindi - Neural)' },
-    { id: 'mr-IN-AarohiNeural', label: 'Aarohi (Natural Marathi - Neural)' },
     { id: 'en-US-JennyNeural', label: 'Jenny (Warm US English - Neural)' },
     { id: 'af_heart', label: 'Heart (Warm Natural US - Kokoro CPU)' },
   ];

@@ -100,8 +100,8 @@ class Settings(BaseSettings):
         description="TTS engine: 'edge_tts' (high-fidelity neural female voices), 'kokoro' (English), 'mithi', or 'pyttsx3' (fallback).",
     )
     tts_voice: str = Field(
-        default="en-US-AvaMultilingualNeural",
-        description="TTS voice name: for Edge ('en-US-AvaMultilingualNeural', 'en-IN-NeerjaExpressiveNeural', 'hi-IN-SwaraNeural', 'mr-IN-AarohiNeural') or Kokoro ('af_heart').",
+        default="en-IN-NeerjaExpressiveNeural",
+        description="TTS voice name: for Edge ('en-IN-NeerjaExpressiveNeural', 'hi-IN-SwaraNeural', 'mr-IN-AarohiNeural') or Kokoro ('af_heart').",
     )
     tts_speed: float = Field(
         default=1.0,
@@ -110,6 +110,10 @@ class Settings(BaseSettings):
     tts_use_edge_neural: bool = Field(
         default=True,
         description="Whether to use Microsoft Edge Neural voices (Swara, Aarohi, Neerja) for high-accuracy speech.",
+    )
+    tts_prefer_edge_for_english: bool = Field(
+        default=True,
+        description="Whether to use Edge Neural Neerja (expressive Indian female voice) for English conversation.",
     )
     tts_use_mithi: bool = Field(
         default=False,

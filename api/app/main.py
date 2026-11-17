@@ -208,6 +208,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         use_mithi=settings.tts_use_mithi,
         mithi_voice=settings.tts_voice if settings.tts_engine == "mithi" else "charvi",
         prefer_mithi_for_english=settings.tts_prefer_mithi_for_english,
+        prefer_edge_for_english=settings.tts_prefer_edge_for_english,
     )
 
     # Step 7: Initialize ChatService (now memory-aware and multi-agent orchestrated)

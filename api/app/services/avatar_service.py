@@ -28,17 +28,17 @@ AVATAR_ASSETS_DIR = PROJECT_ROOT / "avatar" / "assets"
 AVATAR_CONFIG_PATH = AVATAR_ASSETS_DIR / "avatar_config.json"
 
 AVAILABLE_FEMALE_VOICES: list[dict[str, str]] = [
+    {"id": "en-IN-NeerjaExpressiveNeural", "label": "Neerja (Natural Indian English - Neural Female)"},
+    {"id": "hi-IN-SwaraNeural", "label": "Swara (Natural Indian Hindi - Neural Female)"},
+    {"id": "mr-IN-AarohiNeural", "label": "Aarohi (Natural Indian Marathi - Neural Female)"},
     {"id": "en-US-AvaMultilingualNeural", "label": "Ava (Expressive & Natural - Copilot AI)"},
-    {"id": "en-IN-NeerjaExpressiveNeural", "label": "Neerja (Expressive Indian English - Neural)"},
-    {"id": "hi-IN-SwaraNeural", "label": "Swara (Natural Hindi - Neural)"},
-    {"id": "mr-IN-AarohiNeural", "label": "Aarohi (Natural Marathi - Neural)"},
-    {"id": "en-US-JennyNeural", "label": "Jenny (Warm US English - Neural)"},
-    {"id": "af_heart", "label": "Heart (Warm Natural US - Kokoro CPU)"},
     {"id": "charvi", "label": "Charvi (Local Indian Female - Mithi)"},
     {"id": "ahana", "label": "Ahana (Expressive Indian Female - Mithi)"},
     {"id": "vaidehi", "label": "Vaidehi (Soft Indian Female - Mithi)"},
     {"id": "malini", "label": "Malini (Articulate Indian Female - Mithi)"},
     {"id": "jahnavi", "label": "Jahnavi (Bright Indian Female - Mithi)"},
+    {"id": "en-US-JennyNeural", "label": "Jenny (Warm US English - Neural)"},
+    {"id": "af_heart", "label": "Heart (Warm Natural US - Kokoro CPU)"},
     {"id": "af_nova", "label": "Nova (Clear Bright US - Kokoro)"},
     {"id": "bf_emma", "label": "Emma (British Female - Kokoro)"},
 ]
@@ -74,7 +74,7 @@ class AvatarConfig(BaseModel):
     mode: Literal["photo", "vrm", "stylized"] = "stylized"
     name: str = Field(default="Nyx", min_length=1, max_length=40)
     tagline: str = Field(default="Local Desktop AI Companion", max_length=80)
-    voice: str = Field(default="en-US-AvaMultilingualNeural")
+    voice: str = Field(default="en-IN-NeerjaExpressiveNeural")
     photo_url: str | None = None
     model_url: str | None = None
     landmarks: AvatarLandmarks = Field(default_factory=AvatarLandmarks)

@@ -24,6 +24,7 @@ Usage:
 
 from __future__ import annotations
 
+import inspect
 import io
 import os
 import re
@@ -506,9 +507,9 @@ class EdgeTTSSpeaker(TTSProvider):
     VOICE_MAP = {
         "hi": "hi-IN-SwaraNeural",
         "mr": "mr-IN-AarohiNeural",
-        "en": "en-US-AvaMultilingualNeural",
-        "en-us": "en-US-AvaMultilingualNeural",
+        "en": "en-IN-NeerjaExpressiveNeural",
         "en-in": "en-IN-NeerjaExpressiveNeural",
+        "en-us": "en-IN-NeerjaExpressiveNeural",
         "pa": "pa-IN-OjasNeural",
         "bn": "bn-IN-TanishaaNeural",
         "gu": "gu-IN-DhwaniNeural",
@@ -541,15 +542,23 @@ class EdgeTTSSpeaker(TTSProvider):
 
         lang_base = language.strip().lower().split("-")[0].split("_")[0]
 
-        # Strict language matching: ensure Indic text is never spoken by an English voice
+        # Strict language matching: ensure Indic text is spoken by native Indian female voices,
+        # and English defaults to authentic Indian female voice (Neerja)
         if lang_base == "mr":
             target_voice = voice if (voice and voice.startswith("mr-")) else self.VOICE_MAP.get("mr", "mr-IN-AarohiNeural")
         elif lang_base == "hi":
             target_voice = voice if (voice and voice.startswith("hi-")) else self.VOICE_MAP.get("hi", "hi-IN-SwaraNeural")
+        elif lang_base == "en":
+            if voice and voice.startswith("en-IN-"):
+                target_voice = voice
+            elif voice and ("Neerja" in voice or "Swara" in voice or "Aarohi" in voice):
+                target_voice = voice
+            else:
+                target_voice = self.VOICE_MAP.get("en", "en-IN-NeerjaExpressiveNeural")
         elif voice and (voice in self.VOICE_MAP.values() or "Neural" in voice):
             target_voice = voice
         else:
-            target_voice = self.VOICE_MAP.get(lang_base, "en-US-AvaMultilingualNeural")
+            target_voice = self.VOICE_MAP.get(lang_base, "en-IN-NeerjaExpressiveNeural")
 
         async def _run_edge() -> bytes:
             communicate = edge_tts.Communicate(
@@ -591,8 +600,8 @@ class EdgeTTSSpeaker(TTSProvider):
                 return self._fallback.synthesize(text, language=language, voice=voice)
             return b""
 
-    def speak(self, text: str, language: str = "en") -> None:
-        wav = self.synthesize(text, language=language)
+    def speak(self, text: str, language: str = "en", voice: str | None = None) -> None:
+        wav = self.synthesize(text, language=language, voice=voice)
         if wav:
             play_wav_bytes(wav)
         else:
@@ -867,6 +876,7 @@ class NyxTTSSpeaker(TTSProvider):
         use_mithi: Whether to use Mithi for Indian languages.
         mithi_voice: Mithi female voice name ('charvi', 'ahana', 'vaidehi', 'malini', 'jahnavi').
         prefer_mithi_for_english: Whether to use Mithi's Indian voice for English too.
+        prefer_edge_for_english: Whether to use Edge Neural (Neerja Indian female) for English.
     """
 
     def __init__(
@@ -877,6 +887,7 @@ class NyxTTSSpeaker(TTSProvider):
         use_mithi: bool = False,
         mithi_voice: str = "charvi",
         prefer_mithi_for_english: bool = False,
+        prefer_edge_for_english: bool = True,
     ) -> None:
         self._kokoro = KokoroSpeaker(voice=kokoro_voice, speed=tts_speed)
         self._pyttsx3 = Pyttsx3Speaker()
@@ -885,6 +896,7 @@ class NyxTTSSpeaker(TTSProvider):
         self._use_mithi = use_mithi
         self._mithi_voice = mithi_voice
         self._prefer_mithi_for_english = prefer_mithi_for_english
+        self._prefer_edge_for_english = prefer_edge_for_english
         self._mithi = MithiSpeaker(
             voice=mithi_voice,
             fallback=self._edge_tts if use_edge_neural else self._pyttsx3,
@@ -898,6 +910,7 @@ class NyxTTSSpeaker(TTSProvider):
             use_mithi=use_mithi,
             mithi_voice=mithi_voice,
             prefer_mithi_for_english=prefer_mithi_for_english,
+            prefer_edge_for_english=prefer_edge_for_english,
         )
 
     def _get_provider(self, language: str, voice: str | None = None) -> TTSProvider:
@@ -924,9 +937,10 @@ class NyxTTSSpeaker(TTSProvider):
         if voice and voice.startswith(("af_", "bf_", "am_", "bm_")):
             return self._kokoro
 
-        # 4. High-fidelity Neural Edge-TTS (Ava, Neerja, Jenny) for English
+        # 4. High-fidelity Neural Edge-TTS (Neerja Indian female voice) for English
+        # When use_edge is True, route English to Edge Neural Neerja so it never sounds robotic
         if getattr(self, "_use_edge", False) and getattr(self, "_edge_tts", None) is not None:
-            if (voice and "Neural" in voice) or lang_base == "en-in":
+            if getattr(self, "_prefer_edge_for_english", True) or (voice and "Neural" in voice) or lang_base == "en-in":
                 return self._edge_tts
 
         # 5. Kokoro CPU ONNX for English or general fallback
@@ -953,14 +967,18 @@ class NyxTTSSpeaker(TTSProvider):
         )
         return provider.synthesize(text, language=language, voice=voice)
 
-    def speak(self, text: str, language: str = "en") -> None:
+    def speak(self, text: str, language: str = "en", voice: str | None = None) -> None:
         """
         Speak text aloud, routing to the best engine for the language.
 
         Blocks until playback completes.
         """
-        provider = self._get_provider(language)
-        provider.speak(text, language=language)
+        provider = self._get_provider(language, voice=voice)
+        sig = inspect.signature(provider.speak)
+        if "voice" in sig.parameters:
+            provider.speak(text, language=language, voice=voice)
+        else:
+            provider.speak(text, language=language)
 
     def get_engine_name(self) -> str:
         return "nyx-tts-router"

@@ -342,8 +342,13 @@ class TestEdgeTTSSpeaker:
         provider_hi = speaker._get_provider("hi")
         assert isinstance(provider_hi, EdgeTTSSpeaker)
 
+        # By default, English routes to EdgeTTSSpeaker (Neerja Indian female voice)
         provider_en = speaker._get_provider("en")
-        assert provider_en is speaker._kokoro
+        assert isinstance(provider_en, EdgeTTSSpeaker)
+
+        # When a Kokoro voice is explicitly requested, it routes to Kokoro
+        provider_af = speaker._get_provider("en", voice="af_heart")
+        assert provider_af is speaker._kokoro
 
 
 class TestMithiSpeaker:
@@ -370,7 +375,7 @@ class TestMithiSpeaker:
 
     def test_mithi_routing_in_nyx_speaker(self) -> None:
         from voice.tts.speaker import MithiSpeaker, NyxTTSSpeaker
-        speaker = NyxTTSSpeaker(use_mithi=True, prefer_mithi_for_english=False)
+        speaker = NyxTTSSpeaker(use_mithi=True, prefer_mithi_for_english=False, use_edge_neural=False)
         provider_hi = speaker._get_provider("hi")
         assert isinstance(provider_hi, MithiSpeaker)
 
