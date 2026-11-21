@@ -78,7 +78,7 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
 
     Usage:
         logger = get_logger(__name__)
-        logger.info("server_started", host="127.0.0.1", port=8000)
+        logger.info("server_started", host="127.0.0.1", port=19420)
 
     Args:
         name: Module name, typically __name__.

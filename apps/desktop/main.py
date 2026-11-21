@@ -82,7 +82,7 @@ def find_hyprland_window() -> dict[str, Any] | None:
             title = client.get("title", "").lower()
             initial_title = client.get("initialTitle", "").lower()
             cls = client.get("class", "").lower()
-            if "nyxai" in title or "nyxai" in initial_title or "nyxai" in cls or "19421" in title or "5173" in title:
+            if "nyxai" in title or "nyxai" in initial_title or "nyxai" in cls or "19421" in title:
                 return client
     except Exception as e:
         logger.warning("hyprctl_client_search_failed", error=str(e))
