@@ -458,10 +458,6 @@ class NyxDesktopWindow(QMainWindow):
             conn.disconnectFromServer()
 
     def closeEvent(self, event) -> None:
-        if not self._force_quit and self._tray is not None and self._tray.isVisible():
-            event.ignore()
-            self.hide()
-            return
         self._cleanup_ipc()
         self._cleanup_backend()
         super().closeEvent(event)

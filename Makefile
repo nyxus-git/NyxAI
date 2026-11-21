@@ -1,4 +1,4 @@
-.PHONY: help setup install dev app test test-all test-cov evaluate lint clean pull-model voice service-install service-start service-stop service-status service-logs toggle-ui ptt
+.PHONY: help setup install dev stop app test test-all test-cov evaluate lint clean pull-model voice service-install service-start service-stop service-status service-logs toggle-ui ptt
 
 PYTHON := .venv/bin/python
 PIP    := .venv/bin/python -m pip
@@ -11,6 +11,7 @@ help:
 	@echo "  make install         Install Python dependencies"
 	@echo "  make app             Launch dedicated NyxAI Desktop App"
 	@echo "  make dev             Start FastAPI dev server (auto-reload)"
+	@echo "  make stop            Stop all running NyxAI processes & free ports"
 	@echo "  make voice           Start push-to-talk voice chat CLI (agent mode)"
 	@echo "  make test            Run full test suite"
 	@echo "  make test-cov        Run tests with coverage report"
@@ -38,8 +39,16 @@ setup:
 install:
 	$(PIP) install -r requirements.txt
 
+# ─── Stop running NyxAI processes & free ports ────────────────────────────────
+stop:
+	@echo "Stopping any running NyxAI processes on ports 19420 & 19421..."
+	@fuser -k 19420/tcp 2>/dev/null || true
+	@fuser -k 19421/tcp 2>/dev/null || true
+	@echo "All NyxAI processes stopped and ports freed."
+
 # ─── Start development server ──────────────────────────────────────────────────
 dev:
+	@fuser -k 19420/tcp 2>/dev/null || true
 	.venv/bin/python -m uvicorn api.app.main:app --reload --host 127.0.0.1 --port 19420
 
 # ─── Launch Dedicated Desktop App ──────────────────────────────────────────────
