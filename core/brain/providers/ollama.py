@@ -129,6 +129,12 @@ class OllamaProvider(LLMProvider):
             "keep_alive": "30m",
             "options": {
                 "temperature": temperature,
+                # Larger context window — prevents silent history truncation at 2048 tokens
+                "num_ctx": 8192,
+                # Penalize repetition to avoid looping / rambling responses
+                "repeat_penalty": 1.1,
+                # top_p nucleus sampling — more stable output quality
+                "top_p": 0.9,
             },
         }
 
@@ -246,7 +252,13 @@ class OllamaProvider(LLMProvider):
             "model": self._model,
             "messages": [msg.to_dict() for msg in messages],
             "stream": True,
-            "options": {"temperature": temperature},
+            "keep_alive": "30m",
+            "options": {
+                "temperature": temperature,
+                "num_ctx": 8192,
+                "repeat_penalty": 1.1,
+                "top_p": 0.9,
+            },
         }
 
         logger.debug("ollama_stream_start", model=self._model)
@@ -281,7 +293,7 @@ class OllamaProvider(LLMProvider):
         self,
         messages: list[Message],
         tools: list[dict],
-        temperature: float = 0.5,
+        temperature: float = 0.1,
     ) -> LLMResponseWithTools:
         """
         Send a conversation to Ollama with available tools for native tool calling.
@@ -331,6 +343,9 @@ class OllamaProvider(LLMProvider):
             "keep_alive": "30m",
             "options": {
                 "temperature": temperature,
+                "num_ctx": 8192,
+                "repeat_penalty": 1.1,
+                "top_p": 0.9,
             },
         }
 

@@ -27,11 +27,12 @@ if TYPE_CHECKING:
 
 
 class MessageRole(str, Enum):
-    """Chat message roles matching the OpenAI conversation format."""
+    """Chat message roles matching the OpenAI/Ollama conversation format."""
 
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
+    TOOL = "tool"
 
 
 @dataclass
@@ -40,16 +41,21 @@ class Message:
     A single message in a conversation.
 
     Attributes:
-        role: Who sent this message (system, user, or assistant).
+        role: Who sent this message (system, user, assistant, or tool).
         content: The text content of the message.
+        tool_name: Optional tool name for TOOL role messages (Ollama native tool format).
     """
 
     role: MessageRole
     content: str
+    tool_name: str | None = None
 
     def to_dict(self) -> dict[str, str]:
         """Convert to dict format expected by Ollama and OpenAI APIs."""
-        return {"role": self.role.value, "content": self.content}
+        data: dict[str, str] = {"role": self.role.value, "content": self.content}
+        if self.tool_name:
+            data["tool_name"] = self.tool_name
+        return data
 
 
 @dataclass

@@ -131,7 +131,7 @@ class NyxAgent:
         Returns:
             AgentResponse with the final response content and tool metadata.
         """
-        history = history or []
+        history = _trim_history(history or [])
         conv_id = str(uuid.uuid4())[:8]  # Short ID for log correlation
 
         logger.info(
@@ -231,7 +231,7 @@ class NyxAgent:
             llm_response = await self._llm.chat_with_tools(
                 messages=messages,
                 tools=active_tools,
-                temperature=0.5,  # Lower temp for more deterministic tool selection
+                temperature=0.1,  # Low temp for deterministic, accurate tool selection
             )
 
             # Case 1: LLM responded with text — no tool call needed
@@ -310,11 +310,11 @@ class NyxAgent:
             tool_used = tool_call.name
             tool_result_data = tool_result.data
 
-            # Append tool result as a tool message for the LLM
-            # This tells the LLM what the tool returned so it can craft a response
+            # Append tool result using native 'tool' role for accurate Ollama multi-turn parsing
             tool_result_message = Message(
-                role=MessageRole.USER,  # Some models use 'tool' role; for compatibility we use user
-                content=f"[Tool: {tool_call.name}]\n{tool_result.to_llm_content()}",
+                role=MessageRole.TOOL,
+                content=tool_result.to_llm_content(),
+                tool_name=tool_call.name,
             )
             messages.append(tool_result_message)
 
@@ -435,3 +435,26 @@ class NyxAgent:
                 error=str(e),
                 display_text=f"An unexpected error occurred while running '{tool_call.name}'.",
             )
+
+
+def _trim_history(history: list[Message], max_chars: int = 12000) -> list[Message]:
+    """
+    Keep the most recent conversation messages within a character budget.
+
+    Prevents long conversation histories from silently overflowing the model's
+    context window and degrading tool-calling accuracy.
+    """
+    if not history:
+        return []
+
+    kept: list[Message] = []
+    total_chars = 0
+    for msg in reversed(history):
+        msg_len = len(msg.content or "")
+        if total_chars + msg_len > max_chars and kept:
+            break
+        kept.append(msg)
+        total_chars += msg_len
+
+    kept.reverse()
+    return kept

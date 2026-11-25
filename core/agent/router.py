@@ -32,6 +32,7 @@ _CHITCHAT_PATTERNS: list[re.Pattern] = [
     re.compile(r"^(how are you|who are you|what is your name|tell me about yourself|what can you do)\b", re.IGNORECASE),
     re.compile(r"^(thank you|thanks|bye|goodbye|see you|take care)\b", re.IGNORECASE),
     re.compile(r"^(tell me a joke|write a poem|say something in hindi|say something in marathi)\b", re.IGNORECASE),
+    re.compile(r"(कैसी हो|कैसे हो|तुम कौन हो|कशी आहेस|तू कोण आहेस|धन्यवाद|शुक्रिया)", re.IGNORECASE),
 ]
 
 # System Metrics & Diagnostics
@@ -40,24 +41,28 @@ _SYSTEM_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(cpu|processor|core utilization|cpu usage|cpu percent)\b", re.IGNORECASE),
     re.compile(r"\b(ram|memory usage|free memory|ram usage|how much ram)\b", re.IGNORECASE),
     re.compile(r"\b(gpu|vram|graphics card|nvidia|temperature|temp|gpu status)\b", re.IGNORECASE),
-    re.compile(r"\b(what time|current time|what is the time|clock|what day|what date|today's date)\b", re.IGNORECASE),
+    re.compile(r"\b(what time|current time|what is the time|clock|what day|what date|today's date|samay|waqt|kitne baje|time kya)\b", re.IGNORECASE),
     re.compile(r"\b(system info|os version|kernel|uptime|hardware specs|device info)\b", re.IGNORECASE),
+    re.compile(r"(बैटरी|समय|तारीख|कितने बजे|सिस्टम|सीपीयू|रैम|जीपीयू|वेळ|बॅटरी)", re.IGNORECASE),
 ]
 
 # Application Launching
 _APPLICATION_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b(open|launch|start|run|switch to)\s+([a-zA-Z0-9_\-\s]+)", re.IGNORECASE),
     re.compile(r"\b(firefox|chrome|code|vscode|terminal|konsole|kitty|alacritty|vlc|mpv|spotify|discord|telegram|calculator|dolphin|nautilus|obsidian)\b", re.IGNORECASE),
+    re.compile(r"\b(kholo|chalao|shuru karo|band karo)\b", re.IGNORECASE),
+    re.compile(r"(खोलो|चलाओ|उघड|सुरू कर)", re.IGNORECASE),
 ]
 
 # Web & Browser
 _BROWSER_PATTERNS: list[re.Pattern] = [
-    re.compile(r"\b(search|google|duckduckgo|look up|find online|search web|search the internet)\b", re.IGNORECASE),
+    re.compile(r"\b(search|google|duckduckgo|look up|find online|search web|search the internet|dhundo|khojo)\b", re.IGNORECASE),
     re.compile(r"\b(open url|open link|open website|go to https?://|browse)\b", re.IGNORECASE),
     re.compile(r"\b(read webpage|read page|read article|summarize website|extract from url|scrape)\b", re.IGNORECASE),
     re.compile(r"\b(research|deep search|knowledge lookup|search knowledge)\b", re.IGNORECASE),
     re.compile(r"\b(summarize\s+(page|webpage|article|site|url))\b", re.IGNORECASE),
     re.compile(r"https?://[^\s]+", re.IGNORECASE),
+    re.compile(r"(खोजो|सर्च करो|वेबसाइट|शोध)", re.IGNORECASE),
 ]
 
 # File System
@@ -155,9 +160,11 @@ class DomainClassifier:
                         or any(p.search(clean_msg) for p in _BROWSER_PATTERNS)
                         or any(p.search(clean_msg) for p in _FILE_PATTERNS)
                         or any(p.search(clean_msg) for p in _TASK_PATTERNS)
+                        or any(p.search(clean_msg) for p in _PLANNING_PATTERNS)
                         or any(p.search(clean_msg) for p in _VISION_PATTERNS)
                         or any(p.search(clean_msg) for p in _MEDIA_PATTERNS)
                         or any(p.search(clean_msg) for p in _TERMINAL_PATTERNS)
+                        or any(p.search(clean_msg) for p in _COMMS_PATTERNS)
                     )
                     if not has_tool_cue:
                         logger.debug("domain_classified_as_conversational", message=clean_msg)
@@ -231,11 +238,12 @@ class DomainClassifier:
             if "plan" in last_msg.lower():
                 domains.add("planning")
 
-        # Fallback heuristic: If the user explicitly asks an action verb ("can you check", "run", "do"),
-        # but no specific domain was matched, provide the core tools rather than locking them out.
+        # Fallback heuristic: only expose core tools when the user clearly asks to
+        # inspect/fetch local state (and not for general knowledge questions).
         if not domains:
-            action_verbs = ("check", "find", "get", "show", "tell me my", "look at", "what is on")
-            if any(clean_msg.lower().startswith(v) for v in action_verbs):
+            lowered = clean_msg.lower()
+            action_prefixes = ("check my", "get my", "show my", "tell me my", "look at", "what is on")
+            if any(lowered.startswith(v) for v in action_prefixes):
                 domains.update(["system", "applications", "tasks"])
 
         domain_list = sorted(list(domains))
