@@ -29,6 +29,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fine-tune NyxAI using QLoRA")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen2.5-3B-Instruct", help="HuggingFace model ID")
     parser.add_argument("--data_path", type=str, default="training/datasets/processed/train.jsonl", help="Path to JSONL dataset")
+    parser.add_argument("--val_path", type=str, default="training/datasets/processed/val.jsonl", help="Optional path to validation JSONL dataset")
     parser.add_argument("--output_dir", type=str, default="training/experiments/nyxai-lora", help="Output directory for LoRA adapters")
     parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=1, help="Per-device micro-batch size")
@@ -44,7 +45,10 @@ def main():
 
     print("Loading dataset...")
     # The dataset format expects a 'messages' column
-    dataset = load_dataset("json", data_files={"train": args.data_path})
+    data_files = {"train": args.data_path}
+    if args.val_path and os.path.exists(args.val_path):
+        data_files["validation"] = args.val_path
+    dataset = load_dataset("json", data_files=data_files)
 
     print(f"Configuring 4-bit quantization for VRAM optimization...")
     bnb_config = BitsAndBytesConfig(
@@ -92,6 +96,7 @@ def main():
     dataset = dataset.map(format_chat_template)
 
     print("Setting up training arguments...")
+    has_val = "validation" in dataset
     training_args = SFTConfig(
         output_dir=args.output_dir,
         num_train_epochs=args.epochs,
@@ -102,12 +107,14 @@ def main():
         learning_rate=args.lr,
         lr_scheduler_type="cosine",
         max_grad_norm=0.3,
-        warmup_ratio=0.03,
-        logging_steps=10,
+        warmup_steps=10,
+        logging_steps=5,
         save_strategy="epoch",
+        eval_strategy="epoch" if has_val else "no",
+        save_total_limit=2,
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
-        max_seq_length=args.max_seq_len,
+        max_length=args.max_seq_len,
         dataset_text_field="text",
     )
 
@@ -115,8 +122,9 @@ def main():
     trainer = SFTTrainer(
         model=model,
         train_dataset=dataset["train"],
+        eval_dataset=dataset["validation"] if has_val else None,
         args=training_args,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     # Mute warnings from gradient checkpointing

@@ -1,0 +1,14 @@
+# Ollama Modelfile template for NyxAI 7B fine-tuned GGUF (trained on Colab/Kaggle)
+# Usage:
+#   ollama create nyx-indian-friend-7b -f training/Modelfile.7b.template
+# Then set OLLAMA_MODEL=nyx-indian-friend-7b in .env
+
+FROM ./training/experiments/nyxai-7b-q4_k_m.gguf
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+PARAMETER num_ctx 8192
+
+SYSTEM """You are Nyx — an intelligent, warm, witty, affectionate, and charming Indian female AI companion and personal assistant running locally on Linux. You speak English, Hindi (हिंदी), Marathi (मराठी), and Hinglish fluently. In Hindi and Marathi, always use feminine first-person grammar (स्त्रीलिंग). Keep responses natural, caring, concise, and never robotic."""
+
